@@ -24,22 +24,34 @@ mod test {
     }
 }
 
-pub struct SpriteAnimationPlugin<Flag> {
+pub struct SpriteAnimationPlugin<Flag, FrameType, Medium> {
     marker: PhantomData<Flag>,
+    phantom_next: PhantomData<FrameType>,
+    phantom_medium: PhantomData<Medium>,
 }
 
-impl<F: 'static + Send + Sync> Default for SpriteAnimationPlugin<F> {
-    fn default() -> SpriteAnimationPlugin<F> {
+impl<F: 'static + Send + Sync, A, M> Default for SpriteAnimationPlugin<F, A, M> {
+    fn default() -> SpriteAnimationPlugin<F, A, M> {
         SpriteAnimationPlugin {
             marker: PhantomData::default(),
+            phantom_next: PhantomData::default(),
+            phantom_medium: PhantomData::default(),
         }
     }
 }
 
-impl<F: 'static + Send + Sync + Component> Plugin for SpriteAnimationPlugin<F> {
+impl<
+        F: 'static + Send + Sync + Component,
+        A: 'static + Send + Sync + Component + AnimationFrame,
+        M: 'static + Send + Sync + Component + AnimationMedium<Frame = A>,
+    > Plugin for SpriteAnimationPlugin<F, A, M>
+{
     fn build(&self, app: &mut App) {
-        app.insert_resource(AnimationNodeTree::<F>::default());
-        app.add_systems(Update, animation_system::<F>.in_set(AnimationSet::Update));
+        app.insert_resource(AnimationNodeTree::<F, A, M>::default());
+        app.add_systems(
+            Update,
+            animation_system::<F, A, M>.in_set(AnimationSet::Update),
+        );
         app.add_systems(
             Update,
             state::update_delta::<F>
@@ -96,48 +108,50 @@ impl StartNode {
 }
 
 #[derive(Resource)]
-pub struct AnimationNodeTree<F> {
-    nodes: HashMap<node_core::NodeID, Box<dyn node_core::AnimationNode>>,
+pub struct AnimationNodeTree<F, A, M> {
+    nodes: HashMap<node_core::NodeID, Box<dyn node_core::AnimationNode<A>>>,
     #[cfg(feature = "serialize")]
-    loaders: HashMap<String, Box<dyn NodeLoader>>,
+    loaders: HashMap<String, Box<dyn NodeLoader<A>>>,
     marker: PhantomData<F>,
+    phantom_medium: PhantomData<M>,
 }
 
-impl<F> Default for AnimationNodeTree<F> {
-    fn default() -> AnimationNodeTree<F> {
+impl<F, A, M> Default for AnimationNodeTree<F, A, M> {
+    fn default() -> AnimationNodeTree<F, A, M> {
         AnimationNodeTree {
             nodes: HashMap::new(),
             #[cfg(feature = "serialize")]
-            loaders: default_loaders(),
+            loaders: default_loaders::<A, M>(),
             marker: PhantomData::default(),
+            phantom_medium: PhantomData::default(),
         }
     }
 }
 
 #[cfg(feature = "serialize")]
-fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
-    let mut map: HashMap<String, Box<dyn NodeLoader>> = HashMap::new();
-    map.insert("IndexNode".to_string(), IndexNode::loader());
+fn default_loaders<A, M>() -> HashMap<String, Box<dyn NodeLoader<A>>> {
+    let mut map: HashMap<String, Box<dyn NodeLoader<A>>> = HashMap::new();
+    map.insert("IndexNode".to_string(), IndexNode::<M>::loader());
     map.insert("FPSNode".to_string(), FPSNode::loader());
     map.insert("ScriptNode".to_string(), ScriptNode::loader());
     map.insert("ScaleNode".to_string(), ScaleNode::loader());
     map
 }
 
-impl<F> AnimationNodeTree<F> {
-    pub fn get_node(&self, id: NodeID) -> Option<&Box<dyn node_core::AnimationNode>> {
+impl<F, A: 'static, M> AnimationNodeTree<F, A, M> {
+    pub fn get_node(&self, id: NodeID) -> Option<&Box<dyn node_core::AnimationNode<A>>> {
         self.nodes.get(&id)
     }
 
     #[inline]
-    pub fn add_node(&mut self, node: Box<dyn node_core::AnimationNode>) -> NodeID {
+    pub fn add_node(&mut self, node: Box<dyn node_core::AnimationNode<A>>) -> NodeID {
         let id = node.id();
         self.insert_node(id.clone(), node);
         id
     }
 
     #[inline]
-    pub fn insert_node(&mut self, id: NodeID, node: Box<dyn AnimationNode>) {
+    pub fn insert_node(&mut self, id: NodeID, node: Box<dyn AnimationNode<A>>) {
         self.nodes.insert(id, node);
     }
 
@@ -157,7 +171,7 @@ impl<F> AnimationNodeTree<F> {
     }
 
     #[cfg(feature = "serialize")]
-    pub fn registor_node<T: CanLoad>(&mut self) {
+    pub fn registor_node<T: CanLoad<A>>(&mut self) {
         let loader = T::loader();
         if loader.can_load().len() != 1 {
             todo!("Change this so that AnimationNodes has a map of node_type -> Loader so one loader can load more then one type of node and share sate")
@@ -224,7 +238,7 @@ impl<F> AnimationNodeTree<F> {
         &mut self,
         data: &str,
         asset_server: &AssetServer,
-    ) -> Result<(NodeID, Box<dyn AnimationNode>), Error> {
+    ) -> Result<(NodeID, Box<dyn AnimationNode<A>>), Error> {
         let data: &str = data.trim();
 
         let node_id: Option<NodeID> = if data.trim().starts_with("NodeID(\"") {
@@ -336,11 +350,33 @@ impl<F> AnimationNodeTree<F> {
     }
 }
 
-fn animation_system<Flag: Component>(
-    nodes: Res<AnimationNodeTree<Flag>>,
-    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode), With<Flag>>,
+pub trait AnimationFrame: Component + Clone {
+    fn set_frame(&mut self, new_frame: Self);
+}
+
+pub trait AnimationMedium: Component {
+    type Frame: AnimationFrame;
+
+    fn num_frames(&self) -> usize;
+
+    fn current_index(&self) -> usize;
+
+    fn set_frame(&mut self, index: usize);
+
+    fn frame_at_index(&self, index: usize) -> &Self::Frame;
+
+    fn current_frame(&self) -> &Self::Frame;
+}
+
+fn animation_system<
+    Flag: Component,
+    Frame: AnimationFrame,
+    Medium: AnimationMedium<Frame = Frame>,
+>(
+    nodes: Res<AnimationNodeTree<Flag, Frame, Medium>>,
+    mut query: Query<(&mut state::AnimationState, &mut Frame, &StartNode), With<Flag>>,
 ) {
-    for (mut state, mut handle, start) in query.iter_mut() {
+    for (mut state, mut frame, start) in query.iter_mut() {
         let mut next = NodeResult::Next(start.0.clone());
         trace!("Starting With: {}", start.0);
         loop {
@@ -358,8 +394,8 @@ fn animation_system<Flag: Component>(
                     error!("{}", e);
                     break;
                 }
-                NodeResult::Done(h) => {
-                    *handle = h;
+                NodeResult::Done(i) => {
+                    frame.set_frame(i);
                     break;
                 }
             }

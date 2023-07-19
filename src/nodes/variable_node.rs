@@ -1,14 +1,16 @@
 use crate::error::BevySpriteAnimationError as Error;
 use crate::node_core::CanLoad;
+use crate::node_core::ImageHandles;
 use crate::prelude::*;
+use crate::AnimationMedium;
+use bevy::prelude::Component;
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use bevy::reflect::Reflect;
 
 #[cfg(test)]
 mod test {
-    use super::VariableNode;
-    use super::VariableNodeLoader;
+    use super::*;
     use crate::node_core::AnimationNode;
     use crate::node_core::NodeLoader;
     use crate::test::test_asset_server;
@@ -25,7 +27,7 @@ mod test {
             ));
         }
         let mut loader = VariableNodeLoader;
-        let test_node = loader
+        let test_node: Box<dyn AnimationNode<Handle<Image>>> = loader
             .load(
                 "name: \"Zombie1_Idle\",
         frames: [
@@ -37,7 +39,10 @@ mod test {
             )
             .unwrap();
         let true_node = Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
-        assert_eq!(test_node.hash(), true_node.hash());
+        assert_eq!(
+            test_node.hash(),
+            <VariableNode<ImageHandles> as AnimationNode<Handle<Image>>>::hash(&true_node)
+        );
     }
 
     #[test]
@@ -52,7 +57,7 @@ mod test {
             ));
         }
         let mut loader = VariableNodeLoader;
-        let test_node = loader
+        let test_node: Box<dyn AnimationNode<Handle<Image>>> = loader
             .load(
                 "
             (
@@ -67,7 +72,7 @@ mod test {
                 &asset_server,
             )
             .unwrap();
-        let true_node: Box<dyn AnimationNode> =
+        let true_node: Box<dyn AnimationNode<Handle<Image>>> =
             Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
         assert_eq!(test_node.hash(), true_node.hash());
     }
@@ -84,7 +89,7 @@ mod test {
             ));
         }
         let mut loader = VariableNodeLoader;
-        let test_node = loader
+        let test_node: Box<dyn AnimationNode<Handle<Image>>> = loader
             .load(
                 "
                 VariableNode(
@@ -102,7 +107,7 @@ mod test {
         // let node: &dyn Any = &test_node;
         // let node = node.downcast_ref::<VariableNode>().unwrap();
         // println!("{:#?}", node);
-        let true_node: Box<dyn AnimationNode> =
+        let true_node: Box<dyn AnimationNode<Handle<Image>>> =
             Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
         assert_eq!(test_node.hash(), true_node.hash());
     }
@@ -118,7 +123,7 @@ mod test {
                 (i + 1) as f32 / 10.,
             ));
         }
-        let true_node: Box<dyn AnimationNode> =
+        let true_node: Box<dyn AnimationNode<Handle<Image>>> =
             Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         let ser_res = true_node.serialize(&mut res, &asset_server);
@@ -138,24 +143,25 @@ mod test {
                 (i + 1) as f32 / 10.,
             ));
         }
-        let true_node: Box<dyn AnimationNode> =
+        let true_node: Box<dyn AnimationNode<Handle<Image>>> =
             Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         assert!(true_node.serialize(&mut res, &asset_server).is_ok());
         let mut loader = VariableNodeLoader;
         let test_node = loader.load(&res, &asset_server);
         assert!(test_node.is_ok(), "{}", test_node.err().unwrap());
-        let test_node = test_node.unwrap();
+        let test_node: Box<dyn AnimationNode<Handle<Image>>> = test_node.unwrap();
         assert_eq!(test_node.hash(), true_node.hash())
     }
 }
 
+/// A node with varying time per frame
 #[derive(Debug, Reflect)]
-pub struct VariableNode {
+pub struct VariableNode<M> {
     name: String,
-    frames: Vec<(Handle<Image>, f32)>,
+    frames: M,
     is_loop: bool,
-    index: Attribute,
+    variables: Vec<f32>,
 }
 
 #[cfg(feature = "bevy-inspector-egui")]
@@ -184,14 +190,16 @@ impl bevy_inspector_egui::Inspectable for IndexNode {
     }
 }
 
-impl VariableNode {
+impl VariableNode<ImageHandles> {
     #[inline(always)]
-    pub fn new(name: &str, frames: &[(Handle<Image>, f32)], is_loop: bool) -> VariableNode {
+    pub fn new(name: &str, frames: &[(Handle<Image>, f32)], is_loop: bool) -> Self {
+        let (handles, variables) = frames.to_vec().into_iter().unzip();
+
         VariableNode {
             name: name.to_string(),
-            frames: frames.to_vec(),
+            frames: ImageHandles::new(handles, Attribute::INDEX),
             is_loop,
-            index: Attribute::INDEX,
+            variables: variables,
         }
     }
 
@@ -201,24 +209,26 @@ impl VariableNode {
         frames: &[(Handle<Image>, f32)],
         is_loop: bool,
         index: Attribute,
-    ) -> VariableNode {
+    ) -> Self {
+        let (handles, variables) = frames.to_vec().into_iter().unzip();
+
         VariableNode {
             name: name.to_string(),
-            frames: frames.to_vec(),
+            frames: ImageHandles::new(handles, index),
             is_loop,
-            index,
+            variables: variables,
         }
     }
 }
 
 #[cfg(feature = "serialize")]
-impl CanLoad for VariableNode {
-    fn loader() -> Box<dyn NodeLoader> {
+impl<A, M> CanLoad<A> for VariableNode<M> {
+    fn loader() -> Box<dyn NodeLoader<A>> {
         Box::new(VariableNodeLoader)
     }
 }
 
-impl AnimationNode for VariableNode {
+impl<A, M: AnimationMedium<Frame = A>> AnimationNode<A> for VariableNode<M> {
     fn name(&self) -> &str {
         &self.name
     }
@@ -227,9 +237,11 @@ impl AnimationNode for VariableNode {
         "VariableNode".to_string()
     }
 
-    fn run(&self, state: &mut AnimationState) -> NodeResult {
-        assert!(self.frames.len() != 0);
-        let mut index = state.try_get_attribute::<usize>(&self.index).unwrap_or(0);
+    fn run(&self, state: &mut AnimationState) -> NodeResult<A> {
+        assert!(self.frames.num_frames() != 0);
+        let mut index = state
+            .try_get_attribute::<usize>(&self.frames.current_index().into())
+            .unwrap_or(0);
         let rem_time = state.get_attribute::<f32>(&Attribute::TIME_ON_FRAME);
         let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
         let mut frame_time =
@@ -238,18 +250,18 @@ impl AnimationNode for VariableNode {
         while frame_time > current.1 {
             frame_time -= current.1;
             index += 1;
-            if index >= self.frames.len() {
+            if index >= self.frames.num_frames() {
                 if self.is_loop {
-                    index %= self.frames.len();
+                    index %= self.frames.num_frames();
                 } else {
-                    index = self.frames.len() - 1;
+                    index = self.frames.num_frames() - 1;
                 }
             }
             current = &self.frames[index];
         }
         state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
-        state.set_attribute(self.index, index);
-        NodeResult::Done(current.0.clone())
+        state.set_attribute(self.frames.current_index(), index);
+        NodeResult::Done(*self.frames.current_frame())
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
@@ -284,7 +296,7 @@ impl AnimationNode for VariableNode {
         data.push_str("],\n\t");
         data.push_str(&format!("is_loop: {},\n\t", self.is_loop));
         data.push_str("index: ");
-        data.push_str(&ron::to_string(&self.index)?);
+        data.push_str(&ron::to_string(&self.frames.current_index())?);
         data.push_str(",\n\t),\n");
         Ok(())
     }
@@ -295,12 +307,12 @@ impl AnimationNode for VariableNode {
         use std::hash::Hasher;
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
         self.name.hash(&mut hasher);
-        self.index.hash(&mut hasher);
+        self.frames.hash(&mut hasher);
         self.is_loop.hash(&mut hasher);
         //todo!() hash frame time as well
-        for (frame, _) in self.frames.iter() {
-            frame.hash(&mut hasher);
-        }
+        // for (frame, _) in self.frames.iter() {
+        //     frame.hash(&mut hasher);
+        // }
         hasher.finish()
     }
 
@@ -321,12 +333,12 @@ mod loader {
     use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
     pub struct VariableNodeLoader;
 
-    impl NodeLoader for VariableNodeLoader {
+    impl<A> NodeLoader<A> for VariableNodeLoader {
         fn load(
             &mut self,
             data: &str,
             asset_server: &bevy::prelude::AssetServer,
-        ) -> Result<Box<dyn AnimationNode>, Error> {
+        ) -> Result<Box<dyn AnimationNode<A>>, Error> {
             let data = data.trim();
             let data = if data.starts_with("VariableNode(") {
                 &data[13..]

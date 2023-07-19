@@ -1,8 +1,10 @@
-use crate::error::BevySpriteAnimationError as Error;
+use crate::{
+    error::BevySpriteAnimationError as Error, prelude::Attribute, AnimationFrame, AnimationMedium,
+};
 use bevy::prelude::*;
 
-pub trait AnimationNode: Send + Sync + Any {
-    fn run(&self, state: &mut super::state::AnimationState) -> NodeResult;
+pub trait AnimationNode<Frame>: Send + Sync + Any {
+    fn run(&self, state: &mut super::state::AnimationState) -> NodeResult<Frame>;
     fn name(&self) -> &str;
     #[cfg(feature = "bevy-inspector-egui")]
     fn ui(
@@ -24,8 +26,8 @@ pub trait AnimationNode: Send + Sync + Any {
     fn hash(&self) -> u64;
 }
 
-pub trait CanLoad {
-    fn loader() -> Box<dyn NodeLoader>;
+pub trait CanLoad<F> {
+    fn loader() -> Box<dyn NodeLoader<F>>;
 }
 
 #[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Copy, Reflect)]
@@ -177,13 +179,13 @@ impl std::fmt::Display for NodeID {
 }
 
 #[derive(Debug)]
-pub enum NodeResult {
+pub enum NodeResult<Frame> {
     Next(NodeID),
-    Done(Handle<Image>),
+    Done(Frame),
     Error(String),
 }
 
-impl std::fmt::Display for NodeResult {
+impl<F> std::fmt::Display for NodeResult<F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeResult::Next(id) => f.write_fmt(format_args!("Next({:#x})", id.0)),
@@ -193,11 +195,53 @@ impl std::fmt::Display for NodeResult {
     }
 }
 
-pub trait NodeLoader: 'static + Send + Sync {
+pub trait NodeLoader<A>: 'static + Send + Sync {
     fn load(
         &mut self,
         data: &str,
         asset_server: &AssetServer,
-    ) -> Result<Box<dyn AnimationNode>, crate::error::BevySpriteAnimationError>;
+    ) -> Result<Box<dyn AnimationNode<A>>, crate::error::BevySpriteAnimationError>;
     fn can_load(&self) -> &[&str];
+}
+
+#[derive(Component, Debug, Reflect, std::hash::Hash)]
+pub struct ImageHandles {
+    pub handles: Vec<Handle<Image>>,
+    pub index: Attribute,
+}
+
+impl AnimationMedium for ImageHandles {
+    type Frame = Handle<Image>;
+
+    fn current_frame(&self) -> &Self::Frame {
+        &self.handles[usize::from(self.index)]
+    }
+
+    fn set_frame(&mut self, index: usize) {
+        self.index = index.into();
+    }
+
+    fn num_frames(&self) -> usize {
+        self.handles.len()
+    }
+
+    fn current_index(&self) -> usize {
+        self.index.into()
+    }
+
+    fn frame_at_index(&self, index: usize) -> &Self::Frame {
+        &self.handles[index]
+    }
+}
+
+impl ImageHandles {
+    pub fn new(handles: Vec<Handle<Image>>, index: Attribute) -> Self {
+        Self { handles, index }
+    }
+}
+
+impl AnimationFrame for Handle<Image> {
+    fn set_frame(&mut self, new_frame: Handle<Image>) {
+        *self = new_frame;
+    }
 }

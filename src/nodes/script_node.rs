@@ -9,6 +9,7 @@ use bevy::prelude::AssetServer;
 mod test {
     use super::*;
     use crate::test::test_asset_server;
+    use bevy::prelude::*;
 
     #[test]
     #[cfg(feature = "serialize")]
@@ -18,15 +19,20 @@ mod test {
         let node = ScriptNode::new("#id NodeID(0x1) #fallback NodeID(Zombie{i}_Idle) if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(Zombie1_StandF)");
 
         let mut data = String::new();
-        node.serialize(&mut data, &asset_server).unwrap();
+        <ScriptNode as AnimationNode<Handle<Image>>>::serialize(&node, &mut data, &asset_server)
+            .unwrap();
         println!("\n\n{}\n\n", data);
-        let test_node = ScriptNode::loader().load(&mut data, &asset_server).unwrap();
-        assert_eq!(node.hash(), test_node.hash());
+        let test_node: Box<dyn AnimationNode<Handle<Image>>> =
+            ScriptNode::loader().load(&mut data, &asset_server).unwrap();
+        assert_eq!(
+            <ScriptNode as AnimationNode<Handle<Image>>>::hash(&node),
+            test_node.hash()
+        );
     }
 }
 
-impl AnimationNode for ScriptNode {
-    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
+impl<A> AnimationNode<A> for ScriptNode {
+    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult<A> {
         let mut index = 0;
         while index < self.tokens.len() {
             match self.tokens[index] {
@@ -551,15 +557,19 @@ mod serialize {
     };
     use bevy::prelude::AssetServer;
 
-    impl CanLoad for ScriptNode {
-        fn loader() -> Box<dyn NodeLoader> {
+    impl<A> CanLoad<A> for ScriptNode {
+        fn loader() -> Box<dyn NodeLoader<A>> {
             Box::new(ScriptNodeLoader)
         }
     }
     pub struct ScriptNodeLoader;
 
-    impl NodeLoader for ScriptNodeLoader {
-        fn load(&mut self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
+    impl<A> NodeLoader<A> for ScriptNodeLoader {
+        fn load(
+            &mut self,
+            data: &str,
+            _: &AssetServer,
+        ) -> Result<Box<dyn AnimationNode<A>>, Error> {
             let data = data.trim();
             let data = if data.starts_with("ScriptNode(") {
                 if data.ends_with("),") {

@@ -1,5 +1,5 @@
 use bevy::{prelude::*, render::texture::ImageSampler};
-use bevy_sprite_animation::prelude::*;
+use bevy_sprite_animation::{node_core::ImageHandles, prelude::*};
 
 use animation::ZState;
 
@@ -178,7 +178,7 @@ fn main() {
         }))
         .add_plugins((
             animation::YourAnimationPlugin,
-            SpriteAnimationPlugin::<Zombie>::default(),
+            SpriteAnimationPlugin::<Zombie, Handle<Image>, ImageHandles>::default(),
             player::Player,
         ))
         .add_systems(Startup, setup_animations)
@@ -191,7 +191,7 @@ struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree<Zombie>>,
+    mut nodes: ResMut<AnimationNodeTree<Zombie, Handle<Image>, ImageHandles>>,
     asset_server: Res<AssetServer>,
 ) {
     commands.spawn(Camera2dBundle::default());

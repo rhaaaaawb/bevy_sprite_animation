@@ -1,13 +1,13 @@
 use bevy::prelude::*;
-use bevy_sprite_animation::prelude::*;
+use bevy_sprite_animation::{node_core::ImageHandles, prelude::*};
 
-/// this is an exaple of how to load a single animation from a str and add it to you game
+/// this is an exaple of how to load a single animation from a str and add it to your game
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin {
             default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
         }))
-        .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
+        .add_plugins(SpriteAnimationPlugin::<Zombie, Handle<Image>, ImageHandles>::default())
         .add_systems(Startup, setup_animations)
         .run()
 }
@@ -18,7 +18,7 @@ struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree<Zombie>>,
+    mut nodes: ResMut<AnimationNodeTree<Zombie, Handle<Image>, ImageHandles>>,
     asset_server: Res<AssetServer>,
 ) {
     commands.spawn(Camera2dBundle::default());

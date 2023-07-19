@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_sprite_animation::prelude::*;
+use bevy_sprite_animation::{node_core::ImageHandles, prelude::*};
 
 /// this is an exaple of how to make a single animation in code and add it to you game
 fn main() {
@@ -7,7 +7,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(ImagePlugin {
             default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
         }))
-        .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
+        .add_plugins(SpriteAnimationPlugin::<Zombie, Handle<Image>, ImageHandles>::default())
         .add_systems(Startup, setup_animations)
         .run()
 }
@@ -18,7 +18,7 @@ struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree<Zombie>>,
+    mut nodes: ResMut<AnimationNodeTree<Zombie, Handle<Image>, ImageHandles>>,
     asset_server: Res<AssetServer>,
 ) {
     commands.spawn(Camera2dBundle::default());
@@ -35,10 +35,9 @@ fn setup_animations(
     nodes.insert_node(
         NodeID::from_u64(0x1),
         Box::new(bevy_sprite_animation::nodes::IndexNode::new(
-            // this node will be called test
-            "test", // this is the frames in oreder that it will use
-            &images, // we want it to loop after it gets to the end
-            true,
+            "test",  // this node will be called test
+            &images, // this is the frames in order that it will use
+            true,    // we want it to loop after it gets to the end
         )),
     );
     // Add a node with a self generated id

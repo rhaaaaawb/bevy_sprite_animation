@@ -60,17 +60,17 @@ impl FPSNode {
 }
 
 #[cfg(feature = "serialize")]
-impl CanLoad for FPSNode {
-    fn loader() -> Box<dyn NodeLoader> {
+impl<A> CanLoad<A> for FPSNode {
+    fn loader() -> Box<dyn NodeLoader<A>> {
         Box::new(FPSNodeLoader)
     }
 }
-impl AnimationNode for FPSNode {
+impl<A> AnimationNode<A> for FPSNode {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn run(&self, state: &mut AnimationState) -> NodeResult {
+    fn run(&self, state: &mut AnimationState) -> NodeResult<A> {
         let delta = state.get_attribute::<f32>(&Attribute::DELTA);
         let rem_time = state
             .try_get_attribute_or_error::<f32>(&Attribute::TIME_ON_FRAME)
@@ -138,12 +138,12 @@ mod loader {
 
     pub struct FPSNodeLoader;
 
-    impl NodeLoader for FPSNodeLoader {
+    impl<A> NodeLoader<A> for FPSNodeLoader {
         fn load(
             &mut self,
             data: &str,
             _asset_server: &bevy::prelude::AssetServer,
-        ) -> Result<Box<dyn crate::prelude::AnimationNode>, crate::error::BevySpriteAnimationError>
+        ) -> Result<Box<dyn crate::prelude::AnimationNode<A>>, crate::error::BevySpriteAnimationError>
         {
             let node: FPSNode = ron::from_str(data)?;
             Ok(Box::new(node))

@@ -365,3 +365,27 @@ impl Attribute {
         Attribute(u64::from_str_radix(data, 10).expect("proper decimal format"))
     }
 }
+
+impl From<Attribute> for u64 {
+    fn from(val: Attribute) -> u64 {
+        val.0
+    }
+}
+
+impl From<Attribute> for usize {
+    fn from(val: Attribute) -> usize {
+        val.0 as usize
+    }
+}
+
+impl From<u64> for Attribute {
+    fn from(val: u64) -> Attribute {
+        Attribute(val)
+    }
+}
+
+impl From<usize> for Attribute {
+    fn from(val: usize) -> Attribute {
+        Attribute(val as u64)
+    }
+}

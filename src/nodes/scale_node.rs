@@ -179,13 +179,13 @@ impl ScaleNode {
 }
 
 #[cfg(feature = "serialize")]
-impl CanLoad for ScaleNode {
-    fn loader() -> Box<dyn NodeLoader> {
+impl<A> CanLoad<A> for ScaleNode {
+    fn loader() -> Box<dyn NodeLoader<A>> {
         Box::new(ScaleNodeLoader)
     }
 }
 
-impl AnimationNode for ScaleNode {
+impl<A> AnimationNode<A> for ScaleNode {
     fn name(&self) -> &str {
         &self.name
     }
@@ -194,7 +194,7 @@ impl AnimationNode for ScaleNode {
         "ScaleNode".to_string()
     }
 
-    fn run(&self, state: &mut AnimationState) -> NodeResult {
+    fn run(&self, state: &mut AnimationState) -> NodeResult<A> {
         let mut index = state.try_get_attribute::<usize>(&self.index).unwrap_or(0);
         let rem_time = state.get_attribute::<f32>(&Attribute::TIME_ON_FRAME);
         let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
@@ -262,12 +262,12 @@ mod loader {
     use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
     pub struct ScaleNodeLoader;
 
-    impl NodeLoader for ScaleNodeLoader {
+    impl<A> NodeLoader<A> for ScaleNodeLoader {
         fn load(
             &mut self,
             data: &str,
             _: &bevy::prelude::AssetServer,
-        ) -> Result<Box<dyn AnimationNode>, Error> {
+        ) -> Result<Box<dyn AnimationNode<A>>, Error> {
             Ok(Box::new(ron::from_str::<ScaleNode>(data)?))
         }
 

@@ -50,17 +50,19 @@ impl<T: MatchType> MatchNode<T> {
 }
 
 #[cfg(feature = "serialize")]
-impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned + Ord> CanLoad for MatchNode<T> {
-    fn loader() -> Box<dyn NodeLoader> {
+impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned + Ord, A> CanLoad<A>
+    for MatchNode<T>
+{
+    fn loader() -> Box<dyn NodeLoader<A>> {
         Box::new(MatchNodeLoader::<T>::default())
     }
 }
 
-impl<T> AnimationNode for MatchNode<T>
+impl<T, A> AnimationNode<A> for MatchNode<T>
 where
     T: MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any + Ord,
 {
-    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
+    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult<A> {
         let val = match state.try_get_attribute_or_error::<T>(&self.check) {
             Ok(x) => x,
             Err(e) => return NodeResult::Error(format!("{}", e)),
@@ -106,7 +108,7 @@ where
         data.push_str(std::any::type_name::<T>());
         data.push_str(">(\n\t");
         data.push_str("name: \"");
-        data.push_str(self.name());
+        data.push_str(<MatchNode<T> as AnimationNode<A>>::name(self));
         data.push_str("\",\n\tcheck: ");
         data.push_str(&ron::ser::to_string_pretty(&self.check, pretty.clone())?);
         data.push_str(",\n\tdefault: ");
@@ -139,10 +141,15 @@ pub use loader::MatchNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
+    use bevy::prelude::*;
+    
     #[test]
     fn match_node_name_offset() {
         let mnl = MatchNodeLoader::<u32>::default();
-        assert_eq!("MatchNode<u32>", mnl.can_load()[0]);
+        assert_eq!(
+            "MatchNode<u32>",
+            <MatchNodeLoader<u32> as NodeLoader<Handle<Image>>>::can_load(&mnl)[0]
+        );
     }
 
     use core::marker::PhantomData;
@@ -169,7 +176,7 @@ mod loader {
     }
     //012345678901234567890123456789012345678901
     //bevy_sprite_animation::nodes::match_node::
-    impl<T> NodeLoader for MatchNodeLoader<T>
+    impl<T, A> NodeLoader<A> for MatchNodeLoader<T>
     where
         T: MatchType + std::any::Any + serde::de::DeserializeOwned + serde::Serialize + Ord,
     {
@@ -177,7 +184,7 @@ mod loader {
             &mut self,
             data: &str,
             _asset_server: &bevy::prelude::AssetServer,
-        ) -> Result<Box<dyn crate::prelude::AnimationNode>, crate::error::BevySpriteAnimationError>
+        ) -> Result<Box<dyn crate::prelude::AnimationNode<A>>, crate::error::BevySpriteAnimationError>
         {
             use std::collections::HashMap;
             let data = data.trim();
