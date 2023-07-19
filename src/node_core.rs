@@ -1,12 +1,15 @@
-use bevy::prelude::*;
 use crate::error::BevySpriteAnimationError as Error;
+use bevy::prelude::*;
 
-pub trait AnimationNode: Send + Sync + Any
-{
+pub trait AnimationNode: Send + Sync + Any {
     fn run(&self, state: &mut super::state::AnimationState) -> NodeResult;
     fn name(&self) -> &str;
     #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool;
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        context: &mut bevy_inspector_egui::Context,
+    ) -> bool;
     fn id(&self) -> NodeID;
     #[cfg(feature = "serialize")]
     fn serialize(&self, data: &mut String, asset_server: &AssetServer) -> Result<(), Error> {
@@ -25,10 +28,10 @@ pub trait CanLoad {
     fn loader() -> Box<dyn NodeLoader>;
 }
 
-#[derive(Debug, Default ,Hash, PartialEq, Eq, Clone, Copy, Reflect)]
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Copy, Reflect)]
 pub struct NodeID(u64);
 
-use std::{collections::HashMap, any::Any};
+use std::{any::Any, collections::HashMap};
 lazy_static::lazy_static! {
     static ref NODE_ID_NAMES: std::sync::Mutex<HashMap<NodeID, String>> = {
         let map = HashMap::new();
@@ -53,15 +56,15 @@ impl NodeID {
         } else {
             data
         };
-        let id = if data.starts_with(|c: char| {c.is_digit(10)}) {
+        let id = if data.starts_with(|c: char| c.is_digit(10)) {
             NodeID::from_digit(data)
         } else {
-           NodeID::from_name(data)
+            NodeID::from_name(data)
         };
         id
     }
 
-    pub fn from_name(name: &str) -> NodeID{
+    pub fn from_name(name: &str) -> NodeID {
         let name = name.trim();
         let id = NodeID::hash_name(name);
         let mut names = NODE_ID_NAMES.lock().unwrap();
@@ -85,16 +88,21 @@ impl NodeID {
     fn from_digit(from: &str) -> NodeID {
         let from = from.trim();
         if from.starts_with("0x") || from.starts_with("0X") {
-            NodeID::from_u64(u64::from_str_radix(&from[2..], 16).expect("NodeID: failed to parse hexadecimal"))
-        } 
-        else if from.starts_with("0b") || from.starts_with("0B") {
-            NodeID::from_u64(u64::from_str_radix(&from[2..], 2).expect("NodeID: failed to parse binary"))
-        }
-        else if from.starts_with("0o") || from.starts_with("0O") {
-            NodeID::from_u64(u64::from_str_radix(&from[2..], 8).expect("NodeID: failed to parse octal"))
-        }
-        else {
-            NodeID::from_u64(u64::from_str_radix(from, 10).expect("NodeID: failed to parse decimal"))
+            NodeID::from_u64(
+                u64::from_str_radix(&from[2..], 16).expect("NodeID: failed to parse hexadecimal"),
+            )
+        } else if from.starts_with("0b") || from.starts_with("0B") {
+            NodeID::from_u64(
+                u64::from_str_radix(&from[2..], 2).expect("NodeID: failed to parse binary"),
+            )
+        } else if from.starts_with("0o") || from.starts_with("0O") {
+            NodeID::from_u64(
+                u64::from_str_radix(&from[2..], 8).expect("NodeID: failed to parse octal"),
+            )
+        } else {
+            NodeID::from_u64(
+                u64::from_str_radix(from, 10).expect("NodeID: failed to parse decimal"),
+            )
         }
     }
 
@@ -117,25 +125,32 @@ impl NodeID {
 
 #[cfg(feature = "serialize")]
 mod serde {
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
     #[derive(Serialize, Deserialize)]
     struct NodeID(String);
-    
+
     impl Serialize for super::NodeID {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer {
-        NodeID(format!("{:#018X}", self.0)).serialize(serializer)
-    }
+        where
+            S: serde::Serializer,
+        {
+            NodeID(format!("{:#018X}", self.0)).serialize(serializer)
+        }
     }
 
     impl<'de> Deserialize<'de> for super::NodeID {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
-            D: serde::Deserializer<'de> {
+            D: serde::Deserializer<'de>,
+        {
             let r = NodeID::deserialize(deserializer)?;
             let res = u64::from_str_radix(&r.0[2..], 16);
-            if let Ok(id) = res {Ok(Self(id))} else {bevy::log::error!("NodeID deserialize error {:?}", res); Ok(Self(0))}
+            if let Ok(id) = res {
+                Ok(Self(id))
+            } else {
+                bevy::log::error!("NodeID deserialize error {:?}", res);
+                Ok(Self(0))
+            }
         }
     }
 }
@@ -144,7 +159,12 @@ mod serde {
 impl bevy_inspector_egui::Inspectable for NodeID {
     type Attributes = ();
 
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _: Self::Attributes, _: &mut bevy_inspector_egui::Context) -> bool {
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        _: Self::Attributes,
+        _: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         ui.label(self.to_string());
         false
     }
@@ -152,7 +172,7 @@ impl bevy_inspector_egui::Inspectable for NodeID {
 
 impl std::fmt::Display for NodeID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("NodeID({:#020X})",self.0))
+        f.write_fmt(format_args!("NodeID({:#020X})", self.0))
     }
 }
 
@@ -163,7 +183,7 @@ pub enum NodeResult {
     Error(String),
 }
 
-impl std::fmt::Display for NodeResult{
+impl std::fmt::Display for NodeResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeResult::Next(id) => f.write_fmt(format_args!("Next({:#x})", id.0)),
@@ -174,6 +194,10 @@ impl std::fmt::Display for NodeResult{
 }
 
 pub trait NodeLoader: 'static + Send + Sync {
-    fn load(&mut self, data: &str, asset_server: &AssetServer) -> Result<Box<dyn AnimationNode>, crate::error::BevySpriteAnimationError>;
+    fn load(
+        &mut self,
+        data: &str,
+        asset_server: &AssetServer,
+    ) -> Result<Box<dyn AnimationNode>, crate::error::BevySpriteAnimationError>;
     fn can_load(&self) -> &[&str];
 }

@@ -1,7 +1,7 @@
-use super::prelude::*;
 use super::error::BevySpriteAnimationError as Error;
+use super::prelude::*;
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 
 use bevy::prelude::*;
 
@@ -9,34 +9,44 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Component)]
 pub struct AnimationState {
-    data: HashMap<Attribute,Vec<u8>>,
+    data: HashMap<Attribute, Vec<u8>>,
     pub(crate) changed: HashSet<Attribute>,
     pub(crate) temp: HashSet<Attribute>,
     #[cfg(feature = "ron")]
-    data_type: HashMap<Attribute, Box<fn(&mut Self, key: Attribute, val: &str) -> Result<(), Error>>>
+    data_type:
+        HashMap<Attribute, Box<fn(&mut Self, key: Attribute, val: &str) -> Result<(), Error>>>,
 }
 
 impl std::fmt::Debug for AnimationState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnimationState")
-        .field("data", &self.data)
-        .field("changed", &self.changed)
-        .field("temp", &self.temp)
-        .finish()
+            .field("data", &self.data)
+            .field("changed", &self.changed)
+            .field("temp", &self.temp)
+            .finish()
     }
 }
 
 impl Default for AnimationState {
     fn default() -> Self {
         let mut data = HashMap::default();
-        data.insert(Attribute::DELTA,  bincode::serialize(&0.0f32).unwrap());
+        data.insert(Attribute::DELTA, bincode::serialize(&0.0f32).unwrap());
         data.insert(Attribute::FRAMES, bincode::serialize(&0usize).unwrap());
         data.insert(Attribute::FLIP_X, bincode::serialize(&false).unwrap());
         data.insert(Attribute::FLIP_Y, bincode::serialize(&false).unwrap());
         #[cfg(not(feature = "ron"))]
-        let s = Self { data, changed: HashSet::new(), temp: HashSet::new()};
+        let s = Self {
+            data,
+            changed: HashSet::new(),
+            temp: HashSet::new(),
+        };
         #[cfg(feature = "ron")]
-        let s = Self { data, changed: HashSet::new(), temp: HashSet::new(), data_type: HashMap::new()};
+        let s = Self {
+            data,
+            changed: HashSet::new(),
+            temp: HashSet::new(),
+            data_type: HashMap::new(),
+        };
         s
     }
 }
@@ -47,7 +57,8 @@ impl AnimationState {
     /// use try_get_attribute() if you are unsure if the attribute exists
     #[inline(always)]
     pub fn get_attribute<D: DeserializeOwned>(&self, key: &Attribute) -> D {
-        self.try_get_attribute(key).expect(&format!("Attribute {} Exists", key))
+        self.try_get_attribute(key)
+            .expect(&format!("Attribute {} Exists", key))
     }
 
     /// will return an `option<D>` attribute panics if `D` is the wrong type
@@ -57,22 +68,28 @@ impl AnimationState {
             Ok(res) => Some(res),
             Err(e) => match e {
                 BevySpriteAnimationError::AttributeNotFound(_) => None,
-                BevySpriteAnimationError::BincodeError(e) => panic!("Attribute could not be deserialised: {}", e),
+                BevySpriteAnimationError::BincodeError(e) => {
+                    panic!("Attribute could not be deserialised: {}", e)
+                }
                 _ => panic!("How did you get this error; please file bug report"),
-            }
+            },
         }
     }
 
-    pub(crate) fn try_get_attribute_or_error<D: DeserializeOwned>(&self, key: &Attribute) -> Result<D, Error> {
+    pub(crate) fn try_get_attribute_or_error<D: DeserializeOwned>(
+        &self,
+        key: &Attribute,
+    ) -> Result<D, Error> {
         match self.data.get(key) {
-            Some(att) => {Ok(bincode::deserialize(att)?)},
-            None => Err(Error::AttributeNotFound(key.clone()))
+            Some(att) => Ok(bincode::deserialize(att)?),
+            None => Err(Error::AttributeNotFound(key.clone())),
         }
     }
 
     #[inline]
     pub fn get_attribute_raw(&self, key: &Attribute) -> &Vec<u8> {
-        self.try_get_attribute_raw(key).expect(&format!("Attribute {} Exists", key))
+        self.try_get_attribute_raw(key)
+            .expect(&format!("Attribute {} Exists", key))
     }
 
     #[inline]
@@ -82,7 +99,8 @@ impl AnimationState {
 
     #[inline]
     pub fn get_attribute_raw_mut(&mut self, key: &Attribute) -> &mut Vec<u8> {
-        self.try_get_attribute_raw_mut(key).expect(&format!("Attribute {} Exists", key))
+        self.try_get_attribute_raw_mut(key)
+            .expect(&format!("Attribute {} Exists", key))
     }
 
     #[inline]
@@ -98,15 +116,24 @@ impl AnimationState {
                 self.change(key);
                 self.data.insert(key, v);
                 self.data_type.insert(key, Box::new(Self::insert_test::<D>));
-            },
-            Err(e) => {error!("Failed to serialize {:?}:{}",key, e);}
+            }
+            Err(e) => {
+                error!("Failed to serialize {:?}:{}", key, e);
+            }
         }
     }
 
     #[cfg(feature = "ron")]
-    fn insert_test<D: Serialize + DeserializeOwned>(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
+    fn insert_test<D: Serialize + DeserializeOwned>(
+        &mut self,
+        key: Attribute,
+        val: &str,
+    ) -> Result<(), Error> {
         match ron::from_str::<D>(val) {
-            Ok(v) => {self.set_attribute(key, v); Ok(())},
+            Ok(v) => {
+                self.set_attribute(key, v);
+                Ok(())
+            }
             Err(e) => Err(Error::RonDeError(e)),
         }
     }
@@ -118,11 +145,13 @@ impl AnimationState {
                 //todo make return something
                 self.change(key);
                 self.data.insert(key, v);
-            },
-            Err(e) => {error!("Failed to serialize {:?}:{}",key, e);}
+            }
+            Err(e) => {
+                error!("Failed to serialize {:?}:{}", key, e);
+            }
         }
     }
-    
+
     #[cfg(feature = "ron")]
     #[inline(always)]
     pub fn set_attribute_from_ron(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
@@ -159,15 +188,13 @@ impl AnimationState {
 pub(crate) fn update_delta<Flag: Component>(
     time: Res<Time>,
     mut states: Query<&mut AnimationState, With<Flag>>,
-){
+) {
     for mut state in states.iter_mut() {
         state.set_attribute(Attribute::DELTA, time.delta_seconds());
     }
 }
 
-pub(crate) fn clear_unchanged_temp(
-    mut states: Query<&mut AnimationState>,
-) {
+pub(crate) fn clear_unchanged_temp(mut states: Query<&mut AnimationState>) {
     for mut state in states.iter_mut() {
         let state = state.as_mut();
         let mut to_clear = Vec::with_capacity(state.temp.len());
@@ -182,17 +209,13 @@ pub(crate) fn clear_unchanged_temp(
     }
 }
 
-pub(crate) fn clear_changed(
-    mut states: Query<&mut AnimationState>
-) {
+pub(crate) fn clear_changed(mut states: Query<&mut AnimationState>) {
     for mut state in states.iter_mut() {
         state.changed.clear();
     }
 }
 
-pub(crate) fn flip_update(
-    mut sprites: Query<(&AnimationState, &mut Sprite)>,
-){
+pub(crate) fn flip_update(mut sprites: Query<(&AnimationState, &mut Sprite)>) {
     for (state, mut sprite) in sprites.iter_mut() {
         sprite.flip_x = state.get_attribute(&Attribute::FLIP_X);
         sprite.flip_y = state.get_attribute(&Attribute::FLIP_Y);

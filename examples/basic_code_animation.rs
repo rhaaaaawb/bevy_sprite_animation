@@ -4,12 +4,12 @@ use bevy_sprite_animation::prelude::*;
 /// this is an exaple of how to make a single animation in code and add it to you game
 fn main() {
     App::new()
-    .add_plugins(DefaultPlugins.set(ImagePlugin {
-        default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
-    }))
-    .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
-    .add_systems(Startup, setup_animations)
-    .run()
+        .add_plugins(DefaultPlugins.set(ImagePlugin {
+            default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
+        }))
+        .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
+        .add_systems(Startup, setup_animations)
+        .run()
 }
 
 #[derive(Component, Default, Reflect)]
@@ -32,37 +32,40 @@ fn setup_animations(
     }
 
     // Add a new IndexNode with a custom id of 0x1
-    nodes.insert_node(NodeID::from_u64(0x1), Box::new(
-        bevy_sprite_animation::nodes::IndexNode::new(
-        // this node will be called test
-        "test",
-        // this is the frames in oreder that it will use
-        &images,
-        // we want it to loop after it gets to the end
-        true)
-    ));
+    nodes.insert_node(
+        NodeID::from_u64(0x1),
+        Box::new(bevy_sprite_animation::nodes::IndexNode::new(
+            // this node will be called test
+            "test", // this is the frames in oreder that it will use
+            &images, // we want it to loop after it gets to the end
+            true,
+        )),
+    );
     // Add a node with a self generated id
-    let fps_start = nodes.add_node(Box::new(
-        bevy_sprite_animation::nodes::FPSNode::new(
+    let fps_start = nodes.add_node(Box::new(bevy_sprite_animation::nodes::FPSNode::new(
         // this node is call fps
         "fps",
         // it will change frames 7 times a seconed
         7,
         // it will go to the frame we just inserted with an id of 0x1
-        NodeID::from_u64(0x1))
-    ));
-
+        NodeID::from_u64(0x1),
+    )));
 
     // spawn SpriteBundle
-    commands.spawn((SpriteBundle{
-        transform: Transform::from_translation(Vec3::X * 10.),
-        sprite: Sprite{custom_size: Some(Vec2::splat(1000.)), ..Default::default()},
-        ..Default::default()
-    },
-    // add animation flag
-    Zombie,
-    // add default AnimationState
-    AnimationState::default(),
-    // add a startnode to our entity with the fps node as its first node
-    StartNode::from_nodeid(fps_start)));
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_translation(Vec3::X * 10.),
+            sprite: Sprite {
+                custom_size: Some(Vec2::splat(1000.)),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        // add animation flag
+        Zombie,
+        // add default AnimationState
+        AnimationState::default(),
+        // add a startnode to our entity with the fps node as its first node
+        StartNode::from_nodeid(fps_start),
+    ));
 }

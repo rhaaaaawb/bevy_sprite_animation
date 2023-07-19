@@ -5,7 +5,7 @@ use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
 
 #[cfg(test)]
-mod test{
+mod test {
     use super::*;
 
     #[test]
@@ -27,9 +27,18 @@ mod test{
         assert_ne!(Attribute::FRAMES, Attribute::new_attribute("Frames"));
         assert_ne!(Attribute::FRAMES, Attribute::from_str("Attribute(Frames)"));
         assert_eq!(Attribute::TIME_ON_FRAME, Attribute::from_str("FrameTime"));
-        assert_eq!(Attribute::TIME_ON_FRAME, Attribute::from_str("Core(FrameTime)"));
-        assert_ne!(Attribute::TIME_ON_FRAME, Attribute::new_attribute("FrameTime"));
-        assert_ne!(Attribute::TIME_ON_FRAME, Attribute::from_str("Attribute(FrameTime)"));
+        assert_eq!(
+            Attribute::TIME_ON_FRAME,
+            Attribute::from_str("Core(FrameTime)")
+        );
+        assert_ne!(
+            Attribute::TIME_ON_FRAME,
+            Attribute::new_attribute("FrameTime")
+        );
+        assert_ne!(
+            Attribute::TIME_ON_FRAME,
+            Attribute::from_str("Attribute(FrameTime)")
+        );
     }
 
     #[test]
@@ -51,7 +60,12 @@ pub struct Attribute(u64);
 impl bevy_inspector_egui::Inspectable for Attribute {
     type Attributes = ();
 
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        _options: Self::Attributes,
+        _context: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         let mut edit = false;
         let mut name = self.name_or_id();
         if ui.text_edit_singleline(&mut name).changed() {
@@ -106,7 +120,8 @@ impl std::fmt::Debug for Attribute {
 impl serde::Serialize for Attribute {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         let serde: AttributeSerde = self.into();
         serde.serialize(serializer)
     }
@@ -116,22 +131,22 @@ impl Into<AttributeSerde> for &Attribute {
     fn into(self) -> AttributeSerde {
         if self.is_core() {
             match self.0 {
-            1 => AttributeSerde::Delta,
-            2 => AttributeSerde::Frames,
-            3 => AttributeSerde::FrameTime,
-            4 => AttributeSerde::FlipX,
-            5 => AttributeSerde::FlipY,
-            _ => panic!("Reserved for futer use")
+                1 => AttributeSerde::Delta,
+                2 => AttributeSerde::Frames,
+                3 => AttributeSerde::FrameTime,
+                4 => AttributeSerde::FlipX,
+                5 => AttributeSerde::FlipY,
+                _ => panic!("Reserved for futer use"),
             }
         } else if self.is_index() {
             match self.name() {
-                Some(n) => {AttributeSerde::IndexName(n)},
-                None => {AttributeSerde::IndexID(self.0 as u16)},
+                Some(n) => AttributeSerde::IndexName(n),
+                None => AttributeSerde::IndexID(self.0 as u16),
             }
         } else {
             match self.name() {
-                Some(n) => {AttributeSerde::AttributeName(n)},
-                None => {AttributeSerde::AttributeID(self.0)},
+                Some(n) => AttributeSerde::AttributeName(n),
+                None => AttributeSerde::AttributeID(self.0),
             }
         }
     }
@@ -169,7 +184,8 @@ enum AttributeSerde {
 impl<'de> serde::Deserialize<'de> for Attribute {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
+        D: serde::Deserializer<'de>,
+    {
         let serde: AttributeSerde = serde::Deserialize::deserialize(deserializer)?;
         Ok(serde.into())
     }
@@ -190,12 +206,11 @@ lazy_static::lazy_static! {
 }
 
 impl Attribute {
-
     /// Returns the attribute for the given Index name
     /// adds the name to the list of known names if it is not already there
     /// use from_str to get the attribute from a string
     #[inline(always)]
-    pub fn new_index(name: &str) -> Attribute{
+    pub fn new_index(name: &str) -> Attribute {
         let att = Attribute(Attribute::hash_for_index(name));
         let mut map = CUSTOMATTRIBUTES.lock().unwrap();
         if !map.contains_key(&att) {
@@ -209,7 +224,7 @@ impl Attribute {
     /// use from_str to get the attribute from a string
 
     #[inline(always)]
-    pub fn new_attribute(name: &str) -> Attribute{
+    pub fn new_attribute(name: &str) -> Attribute {
         let mut map = CUSTOMATTRIBUTES.lock().unwrap();
         let att = Attribute(Attribute::hash_for_custom(name));
         if !map.contains_key(&att) {
@@ -232,7 +247,7 @@ impl Attribute {
         res
     }
 
-    fn hash_for_index(name: &str) -> u64{
+    fn hash_for_index(name: &str) -> u64 {
         let name = name.trim();
         use std::hash::Hash;
         use std::hash::Hasher;
@@ -269,7 +284,7 @@ impl Attribute {
             Some(s) => {
                 res.push_str(&s);
                 res.push(')');
-            },
+            }
             None => {
                 if self.0 < 256 {
                     panic!("All Core Attribute should have names")
@@ -295,46 +310,44 @@ impl Attribute {
         let from = from.trim();
         if from.starts_with("Index(") {
             if from.len() > 7 {
-            if let Some(c) = from.get(6..from.len() - 1) {
-                return if c.starts_with(|x: char| {x.is_digit(10)}) {
-                    Attribute::from_digit(c)
+                if let Some(c) = from.get(6..from.len() - 1) {
+                    return if c.starts_with(|x: char| x.is_digit(10)) {
+                        Attribute::from_digit(c)
+                    } else {
+                        Attribute::new_index(c)
+                    };
                 }
-                else {
-                    Attribute::new_index(c)
-                }
-            }
             }
             panic!("Invalid Index(...)")
         }
         if from.starts_with("Attribute(") {
             if from.len() > 11 {
-            if let Some(c) = from.get(10..from.len() - 1) {
-                return if c.starts_with(|x: char| {x.is_digit(10)}) {
-                    Attribute::from_digit(&from[10..from.len() - 1])
+                if let Some(c) = from.get(10..from.len() - 1) {
+                    return if c.starts_with(|x: char| x.is_digit(10)) {
+                        Attribute::from_digit(&from[10..from.len() - 1])
+                    } else {
+                        Attribute::new_attribute(&from[10..from.len() - 1])
+                    };
                 }
-                else {
-                    Attribute::new_attribute(&from[10..from.len() - 1])
-                }
-            }
             }
             panic!("Invalid Attribute(...)")
         }
         if from.starts_with("Core(") {
             return match &from[5..from.len() - 1] {
-                "Delta" => {Attribute::DELTA},
-                "FrameTime" => {Attribute::TIME_ON_FRAME},
-                "Frames" => {Attribute::FRAMES},
-                _ => panic!("Invalid Core(...)")
-            }
+                "Delta" => Attribute::DELTA,
+                "FrameTime" => Attribute::TIME_ON_FRAME,
+                "Frames" => Attribute::FRAMES,
+                _ => panic!("Invalid Core(...)"),
+            };
         }
-        if from.starts_with(|c: char| {c.is_digit(10)}) {
+        if from.starts_with(|c: char| c.is_digit(10)) {
             return Attribute::from_digit(from);
         }
         match from {
-            "Delta" => {Attribute::DELTA},
-            "FrameTime" => {Attribute::TIME_ON_FRAME},
-            "Frames" => {Attribute::FRAMES},
-            _ => {Attribute::new_attribute(from)}
+            "Delta" => Attribute::DELTA,
+            "FrameTime" => Attribute::TIME_ON_FRAME,
+            "Frames" => Attribute::FRAMES,
+            _ => Attribute::new_attribute(from),
         }
     }
 

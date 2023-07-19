@@ -1,9 +1,9 @@
-use bevy::prelude::*;
-use node_core::NodeLoader;
-use node_core::CanLoad;
 use crate::error::BevySpriteAnimationError as Error;
-use std::{collections::HashMap, marker::PhantomData};
 use crate::prelude::*;
+use bevy::prelude::*;
+use node_core::CanLoad;
+use node_core::NodeLoader;
+use std::{collections::HashMap, marker::PhantomData};
 
 mod error;
 
@@ -16,7 +16,7 @@ pub mod state;
 pub mod system_set;
 
 #[cfg(test)]
-mod test{
+mod test {
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
         use bevy::core::TaskPoolOptions;
         TaskPoolOptions::default().create_default_pools();
@@ -24,23 +24,33 @@ mod test{
     }
 }
 
-pub struct SpriteAnimationPlugin<Flag>{
-    marker: PhantomData<Flag>
+pub struct SpriteAnimationPlugin<Flag> {
+    marker: PhantomData<Flag>,
 }
 
 impl<F: 'static + Send + Sync> Default for SpriteAnimationPlugin<F> {
-    fn default() -> SpriteAnimationPlugin<F>{
-        SpriteAnimationPlugin { marker: PhantomData::default() }
+    fn default() -> SpriteAnimationPlugin<F> {
+        SpriteAnimationPlugin {
+            marker: PhantomData::default(),
+        }
     }
 }
 
-impl<F:'static + Send + Sync + Component> Plugin for SpriteAnimationPlugin<F> {
+impl<F: 'static + Send + Sync + Component> Plugin for SpriteAnimationPlugin<F> {
     fn build(&self, app: &mut App) {
         app.insert_resource(AnimationNodeTree::<F>::default());
         app.add_systems(Update, animation_system::<F>.in_set(AnimationSet::Update));
-        app.add_systems(Update, state::update_delta::<F>.before(AnimationSet::Update).in_set(AnimationSet::PreUpdate));
+        app.add_systems(
+            Update,
+            state::update_delta::<F>
+                .before(AnimationSet::Update)
+                .in_set(AnimationSet::PreUpdate),
+        );
         app.add_systems(First, state::clear_changed);
-        app.add_systems(PostUpdate, state::flip_update.in_set(AnimationSet::PostUpdate));
+        app.add_systems(
+            PostUpdate,
+            state::flip_update.in_set(AnimationSet::PostUpdate),
+        );
         app.add_systems(Last, state::clear_unchanged_temp);
         #[cfg(feature = "bevy-inspector-egui")]
         bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
@@ -54,9 +64,14 @@ pub struct StartNode(node_core::NodeID);
 impl bevy_inspector_egui::Inspectable for StartNode {
     type Attributes = ();
 
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        _options: Self::Attributes,
+        _context: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         let mut edit = false;
-        ui.horizontal(|ui|{
+        ui.horizontal(|ui| {
             let mut name = self.0.name_or_id();
             ui.label("Start Node: ");
             if ui.text_edit_singleline(&mut name).changed() {
@@ -94,7 +109,7 @@ impl<F> Default for AnimationNodeTree<F> {
             nodes: HashMap::new(),
             #[cfg(feature = "serialize")]
             loaders: default_loaders(),
-            marker: PhantomData::default()
+            marker: PhantomData::default(),
         }
     }
 }
@@ -102,7 +117,7 @@ impl<F> Default for AnimationNodeTree<F> {
 #[cfg(feature = "serialize")]
 fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
     let mut map: HashMap<String, Box<dyn NodeLoader>> = HashMap::new();
-    map.insert("IndexNode".to_string(),IndexNode::loader());
+    map.insert("IndexNode".to_string(), IndexNode::loader());
     map.insert("FPSNode".to_string(), FPSNode::loader());
     map.insert("ScriptNode".to_string(), ScriptNode::loader());
     map.insert("ScaleNode".to_string(), ScaleNode::loader());
@@ -149,111 +164,168 @@ impl<F> AnimationNodeTree<F> {
         }
         let can_load = loader.can_load()[0];
         info!("registoring {} loader", can_load);
-        if self.loaders.contains_key(can_load) {warn!("A loader for {} was alreadey registored", can_load)};
+        if self.loaders.contains_key(can_load) {
+            warn!("A loader for {} was alreadey registored", can_load)
+        };
         self.loaders.insert(can_load.into(), loader);
         //this does nothing for now but my become a memory leak in the futer if i make loader extentions point to a shaired loader;
         //this would allow a single loader to share a state between multiple nodes of diffrent types being loaded but my allow a loader
         //to have no type left relying on it because the are all now registored lesswere this becomes an implmentaion issue tho
-
-
     }
 
     #[cfg(feature = "serialize")]
-    pub fn load<P: AsRef<std::path::Path>>(&mut self, path: P, asset_server: &AssetServer) -> Result<(), Error>{
+    pub fn load<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+        asset_server: &AssetServer,
+    ) -> Result<(), Error> {
         let io = asset_server.asset_io().load_path(path.as_ref());
-        
+
         let tree = if let Some(ext) = path.as_ref().extension() {
             let t = ext == "nodetree";
             if !(ext == "node" || t) {
                 return Err(Error::InvalidExtension(ext.to_str().unwrap().to_string()));
             }
             t
-        } else {false};
+        } else {
+            false
+        };
         let data = String::from_utf8(futures_lite::future::block_on(io)?)?;
 
         if tree {
-            info!("loaded {:?} from {:?}",self.load_tree_from_str(&data, asset_server)?, path.as_ref());
+            info!(
+                "loaded {:?} from {:?}",
+                self.load_tree_from_str(&data, asset_server)?,
+                path.as_ref()
+            );
         } else {
-            info!("loaded {} from {:?}",self.load_node_from_str(&data, asset_server)?, path.as_ref());
+            info!(
+                "loaded {} from {:?}",
+                self.load_node_from_str(&data, asset_server)?,
+                path.as_ref()
+            );
         }
         Ok(())
     }
 
     #[cfg(feature = "serialize")]
-    pub fn load_node_from_str(&mut self, data: &str, asset_server: &AssetServer) -> Result<NodeID, Error> {
+    pub fn load_node_from_str(
+        &mut self,
+        data: &str,
+        asset_server: &AssetServer,
+    ) -> Result<NodeID, Error> {
         let (id, node) = self.load_node(data, asset_server)?;
         self.insert_node(id, node);
         Ok(id)
     }
 
     #[cfg(feature = "serialize")]
-    pub fn load_node(&mut self, data: &str, asset_server: &AssetServer) -> Result<(NodeID, Box<dyn AnimationNode>), Error> {
+    pub fn load_node(
+        &mut self,
+        data: &str,
+        asset_server: &AssetServer,
+    ) -> Result<(NodeID, Box<dyn AnimationNode>), Error> {
         let data: &str = data.trim();
 
         let node_id: Option<NodeID> = if data.trim().starts_with("NodeID(\"") {
-            let end = data.find(')').ok_or(Error::MalformedStr { message: format!("Failed to find ')' "), location: here!() })? + 1;
+            let end = data.find(')').ok_or(Error::MalformedStr {
+                message: format!("Failed to find ')' "),
+                location: here!(),
+            })? + 1;
             //info!("data = {}", &data[..end]);
             Some(ron::from_str(&data[..end])?)
         } else {
             None
         };
 
-        let loader = if node_id.is_some() {data.find(':').ok_or(Error::MalformedStr{
-            message: format!("Failed to find NodeID : Node seperator"),
-            location: here!()
-        })? + 1} else {0};
+        let loader = if node_id.is_some() {
+            data.find(':').ok_or(Error::MalformedStr {
+                message: format!("Failed to find NodeID : Node seperator"),
+                location: here!(),
+            })? + 1
+        } else {
+            0
+        };
 
-        let start: usize = if let Some(i) = data[loader..].find('(') {i + loader} else { return Err(Error::MalformedStr{
-            message: format!("Failed to Find Oppening ( in str"),
-            location: here!(),
-        }
-        )};
-        let loader = self.loaders.get_mut(&data[loader..start]).ok_or(Error::NoLoader(data[loader..start].to_string()))?;
+        let start: usize = if let Some(i) = data[loader..].find('(') {
+            i + loader
+        } else {
+            return Err(Error::MalformedStr {
+                message: format!("Failed to Find Oppening ( in str"),
+                location: here!(),
+            });
+        };
+        let loader = self
+            .loaders
+            .get_mut(&data[loader..start])
+            .ok_or(Error::NoLoader(data[loader..start].to_string()))?;
         let node = loader.load(&data[start..], asset_server)?;
-        let node_id = if node_id.is_some() {node_id.unwrap()} else {node.id()};
+        let node_id = if node_id.is_some() {
+            node_id.unwrap()
+        } else {
+            node.id()
+        };
         Ok((node_id, node))
     }
 
     #[cfg(feature = "serialize")]
-    pub fn load_tree_from_str(&mut self, data: &str, asset_server: &AssetServer) -> Result<Vec<NodeID>, Error> {
+    pub fn load_tree_from_str(
+        &mut self,
+        data: &str,
+        asset_server: &AssetServer,
+    ) -> Result<Vec<NodeID>, Error> {
         let data = data.trim();
-        let data = if data.starts_with('[') {data[1..].trim()} else {data};
+        let data = if data.starts_with('[') {
+            data[1..].trim()
+        } else {
+            data
+        };
         let mut nodes = Vec::new();
         let mut index = 0;
         loop {
-        if index >= data.len() {
-            break;
-        }
-        let data = &data[index..];
-        if let Some(next) = data.chars().next() {
-            if next.is_whitespace() || next == ',' || next == ']' || next == ')' || next == '}' {
-                index += 1;
-                trace!("skiped {} at begging of node?\n{}", next, here!());
-                continue;
+            if index >= data.len() {
+                break;
             }
-        };
+            let data = &data[index..];
+            if let Some(next) = data.chars().next() {
+                if next.is_whitespace() || next == ',' || next == ']' || next == ')' || next == '}'
+                {
+                    index += 1;
+                    trace!("skiped {} at begging of node?\n{}", next, here!());
+                    continue;
+                }
+            };
 
-        let start = if data.trim().starts_with("NodeID(\"") {
-            data.find("NodeID(\"").unwrap() + 30
-        } else {0};
+            let start = if data.trim().starts_with("NodeID(\"") {
+                data.find("NodeID(\"").unwrap() + 30
+            } else {
+                0
+            };
 
-        let mut open = data[start..].match_indices('(');
-        open.next();
-        let mut close = data[start..].match_indices(')');
-        let end = loop {
-            match (open.next(), close.next()) {
-                (_, None) => return Err(
-                                Error::MalformedStr{
-                                    message: format!("Failed to find ) "),
-                                    location: here!()
-                                }),
-                (None, Some((end,_))) => {break end + start;},
-                (Some((open,_)), Some((close,_))) => if close < open {break close + start;}
-            }
-        };
-        let data = &data[..end + 1];
-        nodes.push(self.load_node(data, asset_server)?);
-        index += end + 1;
+            let mut open = data[start..].match_indices('(');
+            open.next();
+            let mut close = data[start..].match_indices(')');
+            let end = loop {
+                match (open.next(), close.next()) {
+                    (_, None) => {
+                        return Err(Error::MalformedStr {
+                            message: format!("Failed to find ) "),
+                            location: here!(),
+                        })
+                    }
+                    (None, Some((end, _))) => {
+                        break end + start;
+                    }
+                    (Some((open, _)), Some((close, _))) => {
+                        if close < open {
+                            break close + start;
+                        }
+                    }
+                }
+            };
+            let data = &data[..end + 1];
+            nodes.push(self.load_node(data, asset_server)?);
+            index += end + 1;
         }
         let mut ids = Vec::new();
         for (id, node) in nodes.into_iter() {
@@ -266,22 +338,30 @@ impl<F> AnimationNodeTree<F> {
 
 fn animation_system<Flag: Component>(
     nodes: Res<AnimationNodeTree<Flag>>,
-    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode), With<Flag>>
-){
-    for (mut state,mut handle, start) in query.iter_mut() {
+    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode), With<Flag>>,
+) {
+    for (mut state, mut handle, start) in query.iter_mut() {
         let mut next = NodeResult::Next(start.0.clone());
-        trace!("Starting With: {}",start.0);
+        trace!("Starting With: {}", start.0);
         loop {
             match next {
-                NodeResult::Next(id) => {if let Some(node) = nodes.get_node(id) {
-                    trace!("Running Node: {}",id);
-                    next = node.run(&mut state);
-                } else {
-                    error!("Node not found: {}",id);
+                NodeResult::Next(id) => {
+                    if let Some(node) = nodes.get_node(id) {
+                        trace!("Running Node: {}", id);
+                        next = node.run(&mut state);
+                    } else {
+                        error!("Node not found: {}", id);
+                        break;
+                    }
+                }
+                NodeResult::Error(e) => {
+                    error!("{}", e);
                     break;
-                }},
-                NodeResult::Error(e) => {error!("{}",e); break;}
-                NodeResult::Done(h) => {*handle = h; break;},
+                }
+                NodeResult::Done(h) => {
+                    *handle = h;
+                    break;
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
+use crate::error::BevySpriteAnimationError as Error;
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
-use crate::error::BevySpriteAnimationError as Error;
 
 use crate::node_core::CanLoad;
 use crate::prelude::*;
@@ -18,12 +18,19 @@ pub struct FPSNode {
 impl bevy_inspector_egui::Inspectable for FPSNode {
     type Attributes = ();
 
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        _options: Self::Attributes,
+        _context: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         let mut edit = false;
         ui.collapsing("FPSNode", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Name: ");
-                if ui.text_edit_singleline(&mut self.name).changed() {edit = true;};
+                if ui.text_edit_singleline(&mut self.name).changed() {
+                    edit = true;
+                };
             });
         });
         edit
@@ -39,8 +46,8 @@ impl std::hash::Hash for FPSNode {
 }
 
 impl FPSNode {
-    pub fn new(name: &str, fps: u32, next: impl Into<NodeID>) -> FPSNode{
-        FPSNode{
+    pub fn new(name: &str, fps: u32, next: impl Into<NodeID>) -> FPSNode {
+        FPSNode {
             name: name.to_string(),
             fps,
             then: next.into(),
@@ -65,7 +72,9 @@ impl AnimationNode for FPSNode {
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
         let delta = state.get_attribute::<f32>(&Attribute::DELTA);
-        let rem_time = state.try_get_attribute_or_error::<f32>(&Attribute::TIME_ON_FRAME).unwrap_or(0.);
+        let rem_time = state
+            .try_get_attribute_or_error::<f32>(&Attribute::TIME_ON_FRAME)
+            .unwrap_or(0.);
         let time = delta + rem_time;
         let frames = (time / self.frame_time()).floor();
         let rem_time = time - self.frame_time() * frames;
@@ -76,14 +85,21 @@ impl AnimationNode for FPSNode {
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool{
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        context: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         bevy_inspector_egui::Inspectable::ui(self, ui, (), context)
     }
 
     #[cfg(feature = "serialize")]
-    fn serialize(&self, data: &mut String, _asset_server: &bevy::prelude::AssetServer) -> Result<(), Error>
-    {
-        let mut buf =  Vec::new();
+    fn serialize(
+        &self,
+        data: &mut String,
+        _asset_server: &bevy::prelude::AssetServer,
+    ) -> Result<(), Error> {
+        let mut buf = Vec::new();
         let pretty = ron::ser::PrettyConfig::default().new_line("\n\t".to_string());
         let mut serializer = ron::Serializer::new(&mut buf, Some(pretty))?;
         serde::Serialize::serialize(self, &mut serializer)?;
@@ -102,7 +118,7 @@ impl AnimationNode for FPSNode {
         use std::hash::Hash;
         use std::hash::Hasher;
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        Hash::hash(self,&mut hasher);
+        Hash::hash(self, &mut hasher);
         hasher.finish()
     }
 
@@ -123,13 +139,18 @@ mod loader {
     pub struct FPSNodeLoader;
 
     impl NodeLoader for FPSNodeLoader {
-        fn load(&mut self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNode>, crate::error::BevySpriteAnimationError> {
-        let node: FPSNode = ron::from_str(data)?;
-        Ok(Box::new(node))
-    }
+        fn load(
+            &mut self,
+            data: &str,
+            _asset_server: &bevy::prelude::AssetServer,
+        ) -> Result<Box<dyn crate::prelude::AnimationNode>, crate::error::BevySpriteAnimationError>
+        {
+            let node: FPSNode = ron::from_str(data)?;
+            Ok(Box::new(node))
+        }
 
-    fn can_load(&self) -> &[&str] {
-        &["FPSNode"]
-    }
+        fn can_load(&self) -> &[&str] {
+            &["FPSNode"]
+        }
     }
 }

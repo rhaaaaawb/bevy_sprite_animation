@@ -1,8 +1,8 @@
+use crate::error::BevySpriteAnimationError as Error;
 use crate::node_core::CanLoad;
 use crate::prelude::*;
 use bevy::reflect::Reflect;
-use serde::{Serialize, Deserialize};
-use crate::error::BevySpriteAnimationError as Error;
+use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod test {
@@ -118,7 +118,7 @@ mod test {
 }
 
 #[derive(Debug, Reflect, Serialize, Deserialize)]
-pub struct ScaleNode{
+pub struct ScaleNode {
     name: String,
     index: Attribute,
     scale: Attribute,
@@ -129,14 +129,23 @@ pub struct ScaleNode{
 impl bevy_inspector_egui::Inspectable for IndexNode {
     type Attributes = ();
 
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        _options: Self::Attributes,
+        _context: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         let mut edit = false;
         ui.collapsing("IndexNode", |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Name: ");
-            if ui.text_edit_singleline(&mut self.name).changed() {edit = true;}
-        });
-        if ui.checkbox(&mut self.is_loop, "loop").changed() {edit = true;};
+            ui.horizontal(|ui| {
+                ui.label("Name: ");
+                if ui.text_edit_singleline(&mut self.name).changed() {
+                    edit = true;
+                }
+            });
+            if ui.checkbox(&mut self.is_loop, "loop").changed() {
+                edit = true;
+            };
         });
         edit
     }
@@ -145,17 +154,22 @@ impl bevy_inspector_egui::Inspectable for IndexNode {
 impl ScaleNode {
     #[inline(always)]
     pub fn new(name: &str, scale: Attribute, next: NodeID) -> ScaleNode {
-        ScaleNode { 
+        ScaleNode {
             name: name.to_string(),
             index: Attribute::INDEX,
             scale,
-            next
+            next,
         }
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, index: Attribute, scale: Attribute, next: NodeID) -> ScaleNode {
-        ScaleNode { 
+    pub fn new_with_index(
+        name: &str,
+        index: Attribute,
+        scale: Attribute,
+        next: NodeID,
+    ) -> ScaleNode {
+        ScaleNode {
             name: name.to_string(),
             index,
             scale,
@@ -200,14 +214,17 @@ impl AnimationNode for ScaleNode {
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool{
+    fn ui(
+        &mut self,
+        ui: &mut bevy_inspector_egui::egui::Ui,
+        context: &mut bevy_inspector_egui::Context,
+    ) -> bool {
         bevy_inspector_egui::Inspectable::ui(self, ui, (), context)
     }
 
     #[cfg(feature = "serialize")]
-    fn serialize(&self, data: &mut String, _: &bevy::prelude::AssetServer) -> Result<(), Error>
-    {
-        let mut buf =  Vec::new();
+    fn serialize(&self, data: &mut String, _: &bevy::prelude::AssetServer) -> Result<(), Error> {
+        let mut buf = Vec::new();
         let pretty = ron::ser::PrettyConfig::default().new_line("\n\t".to_string());
         let mut serializer = ron::Serializer::new(&mut buf, Some(pretty))?;
         serde::Serialize::serialize(self, &mut serializer)?;
@@ -239,20 +256,23 @@ pub use loader::ScaleNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
-use crate::{node_core::NodeLoader};
-use super::ScaleNode;
+    use super::ScaleNode;
+    use crate::node_core::NodeLoader;
 
-use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
-pub struct  ScaleNodeLoader;
+    use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
+    pub struct ScaleNodeLoader;
 
-impl NodeLoader for ScaleNodeLoader {
-    fn load(&mut self, data: &str, _: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
-        Ok(Box::new(ron::from_str::<ScaleNode>(data)?))
+    impl NodeLoader for ScaleNodeLoader {
+        fn load(
+            &mut self,
+            data: &str,
+            _: &bevy::prelude::AssetServer,
+        ) -> Result<Box<dyn AnimationNode>, Error> {
+            Ok(Box::new(ron::from_str::<ScaleNode>(data)?))
+        }
+
+        fn can_load(&self) -> &[&str] {
+            &["ScaleNode"]
+        }
     }
-
-    fn can_load(&self) -> &[&str] {
-        &["ScaleNode"]
-    }
-}
-
 }

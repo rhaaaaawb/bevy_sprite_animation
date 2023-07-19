@@ -13,14 +13,31 @@ mod animation {
 
     impl Plugin for YourAnimationPlugin {
         fn build(&self, app: &mut App) {
-            app.add_systems(Update, (zombie_state_update.before(AnimationSet::Update), zombie_update_state.after(AnimationSet::Update)));
+            app.add_systems(
+                Update,
+                (
+                    zombie_state_update.before(AnimationSet::Update),
+                    zombie_update_state.after(AnimationSet::Update),
+                ),
+            );
         }
     }
 
-
     ///ZState in the state the zombie is currently in
-    #[derive(Debug, Component, Hash, PartialEq, Eq, Clone, Copy, Reflect,
-        serde::Serialize, serde::Deserialize, PartialOrd, Ord)]
+    #[derive(
+        Debug,
+        Component,
+        Hash,
+        PartialEq,
+        Eq,
+        Clone,
+        Copy,
+        Reflect,
+        serde::Serialize,
+        serde::Deserialize,
+        PartialOrd,
+        Ord,
+    )]
     #[reflect_value()]
     pub enum ZState {
         Idle,
@@ -44,7 +61,7 @@ mod animation {
 
     ///updates the zombies animation state to reflect its progam state
     fn zombie_state_update(
-        mut zombies: Query<(&mut AnimationState, &ZState), (With<super::Zombie>, Changed<ZState>)>
+        mut zombies: Query<(&mut AnimationState, &ZState), (With<super::Zombie>, Changed<ZState>)>,
     ) {
         let att = Attribute::from_str("ZombieState");
         for (mut state, name) in zombies.iter_mut() {
@@ -54,38 +71,37 @@ mod animation {
 
     ///update the zombies program state is it was changed by the animation
     fn zombie_update_state(
-        mut zombies: Query<(&AnimationState, &mut ZState), With<super::Zombie>>
+        mut zombies: Query<(&AnimationState, &mut ZState), With<super::Zombie>>,
     ) {
         let attribute = Attribute::from_str("ZombieState");
-        for (state,mut name) in zombies.iter_mut() {
+        for (state, mut name) in zombies.iter_mut() {
             if state.changed(&attribute) {
                 *name = state.get_attribute::<ZState>(&attribute);
             }
         }
     }
-
 }
 
 mod player {
     use bevy::prelude::*;
-    use bevy_sprite_animation::{state::AnimationState, prelude::Attribute};
+    use bevy_sprite_animation::{prelude::Attribute, state::AnimationState};
 
     use super::animation::ZState;
-    
+
     #[derive(Debug, Component)]
     pub struct Player;
-    
+
     impl Plugin for Player {
         fn build(&self, app: &mut App) {
             app.add_systems(Update, player_animation_update);
         }
     }
-    
+
     fn player_animation_update(
         mut player: Query<(&mut ZState, &mut AnimationState), With<Player>>,
         mut local: Local<[Attribute; 3]>,
         input: Res<Input<KeyCode>>,
-    ){
+    ) {
         if local[0] == Attribute::NULL {
             local[0] = Attribute::from_str("ZombieState");
             local[1] = Attribute::new_index("Stand");
@@ -98,47 +114,53 @@ mod player {
                     if zstate.as_ref() == &ZState::Walking || zstate.as_ref() == &ZState::Idle {
                         animation.set_attribute(Attribute::FLIP_X, true);
                     }
-                },
+                }
                 KeyCode::D | KeyCode::Right => {
                     if zstate.as_ref() == &ZState::Walking || zstate.as_ref() == &ZState::Idle {
                         animation.set_attribute(Attribute::FLIP_X, false);
                     }
-                },
+                }
                 KeyCode::ShiftLeft | KeyCode::ShiftRight | KeyCode::Up => {
                     *zstate = match zstate.as_ref() {
-                        ZState::Idle => {ZState::Walking},
-                        ZState::Walking => {ZState::Running},
-                        ZState::Running => {ZState::Running},
-                        ZState::Attacking => {ZState::Attacking},
-                        ZState::FallF => {ZState::FallF},
-                        ZState::StandF => {ZState::StandF},
-                        ZState::FallB => {ZState::FallB},
-                        ZState::StandB => {ZState::StandB},
-                        ZState::Test => {ZState::Test},
-                        ZState::LayingB => {ZState::StandB},
-                        ZState::LayingF => {ZState::StandF},
+                        ZState::Idle => ZState::Walking,
+                        ZState::Walking => ZState::Running,
+                        ZState::Running => ZState::Running,
+                        ZState::Attacking => ZState::Attacking,
+                        ZState::FallF => ZState::FallF,
+                        ZState::StandF => ZState::StandF,
+                        ZState::FallB => ZState::FallB,
+                        ZState::StandB => ZState::StandB,
+                        ZState::Test => ZState::Test,
+                        ZState::LayingB => ZState::StandB,
+                        ZState::LayingF => ZState::StandF,
                     }
-                },
+                }
                 KeyCode::Down | KeyCode::ControlLeft | KeyCode::ControlRight => {
                     *zstate = match zstate.as_ref() {
-                        ZState::Idle => {ZState::FallF},
-                        ZState::Walking => {ZState::Idle},
-                        ZState::Running => {ZState::Walking},
-                        ZState::Attacking => {ZState::Attacking},
-                        ZState::FallF => {ZState::FallF},
-                        ZState::StandF => {let index = animation.get_attribute::<usize>(&local[1]);
-                            animation.set_attribute(local[2], 6 - index); ZState::FallF},
-                        ZState::FallB => {ZState::FallB},
-                        ZState::StandB => {let index = animation.get_attribute::<usize>(&local[1]);
-                            animation.set_attribute(local[2], 7 - index); ZState::FallB},
-                        ZState::Test => {ZState::Test},
-                        ZState::LayingB => {ZState::LayingB},
-                        ZState::LayingF => {ZState::LayingF},
+                        ZState::Idle => ZState::FallF,
+                        ZState::Walking => ZState::Idle,
+                        ZState::Running => ZState::Walking,
+                        ZState::Attacking => ZState::Attacking,
+                        ZState::FallF => ZState::FallF,
+                        ZState::StandF => {
+                            let index = animation.get_attribute::<usize>(&local[1]);
+                            animation.set_attribute(local[2], 6 - index);
+                            ZState::FallF
+                        }
+                        ZState::FallB => ZState::FallB,
+                        ZState::StandB => {
+                            let index = animation.get_attribute::<usize>(&local[1]);
+                            animation.set_attribute(local[2], 7 - index);
+                            ZState::FallB
+                        }
+                        ZState::Test => ZState::Test,
+                        ZState::LayingB => ZState::LayingB,
+                        ZState::LayingF => ZState::LayingF,
                     }
-                },
+                }
                 KeyCode::Space => {
                     *zstate = ZState::Attacking;
-                },
+                }
                 KeyCode::T => {
                     *zstate = ZState::Test;
                 }
@@ -151,14 +173,16 @@ mod player {
 
 fn main() {
     App::new()
-    .add_plugins(DefaultPlugins.set(ImagePlugin {
-        default_sampler: ImageSampler::nearest_descriptor(),
-    }))
-    .add_plugins((animation::YourAnimationPlugin,
-        SpriteAnimationPlugin::<Zombie>::default(),
-        player::Player))
-    .add_systems(Startup ,setup_animations)
-    .run()
+        .add_plugins(DefaultPlugins.set(ImagePlugin {
+            default_sampler: ImageSampler::nearest_descriptor(),
+        }))
+        .add_plugins((
+            animation::YourAnimationPlugin,
+            SpriteAnimationPlugin::<Zombie>::default(),
+            player::Player,
+        ))
+        .add_systems(Startup, setup_animations)
+        .run()
 }
 
 #[derive(Component, Default, Reflect)]
@@ -173,15 +197,18 @@ fn setup_animations(
     commands.spawn(Camera2dBundle::default());
 
     let nodes = nodes.as_mut();
-    nodes.registor_node::<MatchNode::<ZState>>();
+    nodes.registor_node::<MatchNode<ZState>>();
 
     let mut images = Vec::new();
     for i in 0..=67 {
         images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
     }
-    nodes.insert_node(NodeID::from_u64(0x3), Box::new(
-        bevy_sprite_animation::nodes::IndexNode::new("test", &images, true)
-    ));
+    nodes.insert_node(
+        NodeID::from_u64(0x3),
+        Box::new(bevy_sprite_animation::nodes::IndexNode::new(
+            "test", &images, true,
+        )),
+    );
 
     let fall_index = Attribute::new_index("Fall");
     let stand_index = Attribute::new_index("Stand");
@@ -199,15 +226,19 @@ fn setup_animations(
     start.set_temporary(fall_index);
     start.set_temporary(stand_index);
     start.set_temporary(attack_index);
-    commands.spawn((SpriteBundle{
-        transform: Transform::from_translation(Vec3::X * 10.),
-        sprite: Sprite{custom_size: Some(Vec2::splat(1000.)), ..Default::default()},
-        ..Default::default()
-    },
-    Zombie,
-    ZState::Attacking,
-    start,
-    player::Player,
-    StartNode::from_str("0x0")
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_translation(Vec3::X * 10.),
+            sprite: Sprite {
+                custom_size: Some(Vec2::splat(1000.)),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        Zombie,
+        ZState::Attacking,
+        start,
+        player::Player,
+        StartNode::from_str("0x0"),
     ));
 }

@@ -2,17 +2,17 @@ use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use thiserror::Error;
 
-use crate::prelude::NodeID;
 use crate::prelude::Attribute;
+use crate::prelude::NodeID;
 
 type Location = String;
 
-#[derive(Debug,Error)]
+#[derive(Debug, Error)]
 pub enum BevySpriteAnimationError {
     #[error("SerializeError")]
     SerializeError,
     #[error("Filed to Deserialize {node_type}: {message}\n{loc}")]
-    DeserializeError{
+    DeserializeError {
         node_type: &'static str,
         message: String,
         loc: Location,
@@ -42,10 +42,7 @@ pub enum BevySpriteAnimationError {
     NoLoader(String),
     #[cfg(feature = "serialize")]
     #[error("Input Data Is Malformed: {message}\n{location}")]
-    MalformedStr{
-        message: String,
-        location: Location
-    },
+    MalformedStr { message: String, location: Location },
     #[cfg(feature = "serialize")]
     #[error("No AssetPath found for {:?}: only loaded asses are suported for now",.0)]
     AssetPathNotFound(Handle<Image>),
@@ -59,14 +56,14 @@ pub enum BevySpriteAnimationError {
     #[error("Failed to find typeid for: {0};\n you must set a attribute once before a script node can set it")]
     NoTypeId(Attribute),
     #[error("asset IO")]
-    AssetIo(#[from]bevy::asset::AssetIoError),
+    AssetIo(#[from] bevy::asset::AssetIoError),
     #[error("bytes to string err")]
-    StringErr(#[from]std::string::FromUtf8Error),
+    StringErr(#[from] std::string::FromUtf8Error),
 }
 
 #[macro_export]
 macro_rules! here {
     () => {
-        format!("{}:{}:{}",file!(), line!(), column!())
+        format!("{}:{}:{}", file!(), line!(), column!())
     };
 }
