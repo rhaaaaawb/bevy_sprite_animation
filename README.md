@@ -77,7 +77,7 @@ fn add_nodes(
     // this will return a handle to a Refrence Node, this is also the nodes can have diffrent Handle<AnimationNode> diffrent from its FilePath and so they dont unload if the nodes that my point into the tree where to unload
     node_tree.load("example.nodetree");
 
-    // Refrence Nodes will run the first Node in there list if you call them so it it ok the use them as start nodes, as long as you are using .node or the first node in the file is correct
+    // Refrence Nodes will run the first Node in their list if you call them so it it ok the use them as start nodes, as long as you are using .node or the first node in the file is correct
 }
 ```
 
@@ -105,13 +105,13 @@ fn add_animator(
     // set temporary attribute
     // these will be removed if they are not changed each frame
     // you can also get index attributes, they follow the same rules but can only be used to get and set usize into the AnimationState
-    state.set_temporary(Attribute::new_index("Idel"));
+    state.set_temporary(Attribute::new_index("Idle"));
 
     // remove temporary attribute
     // by default all attributes are persistent
     // Index Attributes do not conflict with Custom Attributes
-    // Attribute::new_index("Idel") != Attribute::new_attribute("Idel")
-    state.set_persistent(Attribute::new_index_id("Idel"));
+    // Attribute::new_index("Idle") != Attribute::new_attribute("Idle")
+    state.set_persistent(Attribute::new_index_id("Idle"));
 
     // spwan the entity
     commands.spwan((

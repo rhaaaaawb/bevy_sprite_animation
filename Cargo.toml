@@ -26,7 +26,7 @@ opener = { version = ">=0.6", optional = true }
 default = ["serialize", "dot"]
 serialize = ["ron", "serde"]
 dot = ["opener"]
-# editor = ["bevy_editor_pls", "bevy-inspector-egui"]
+# editor = ["dep:bevy_editor_pls", "dep:bevy-inspector-egui"]
 
 [[bin]]
 name = "from_code"
