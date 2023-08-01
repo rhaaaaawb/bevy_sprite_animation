@@ -1,4 +1,5 @@
 use crate::error::LoadError;
+use crate::node_core::NodeFrames;
 use crate::prelude::*;
 use crate::serde::LoadNode;
 use crate::serde::ReflectLoadNode;
@@ -13,7 +14,7 @@ use serde::Deserializer;
 pub struct VariableNode {
     id: Option<NodeId<'static>>,
     name: String,
-    frames: Vec<(Handle<Image>, f32)>,
+    frames: NodeFrames<f32>,
     is_loop: bool,
     index: Attribute,
 }
@@ -24,7 +25,7 @@ impl VariableNode {
         VariableNode {
             id: None,
             name: name.to_string(),
-            frames: frames.to_vec(),
+            frames: frames.into(),
             is_loop,
             index: Attribute::IndexId(0),
         }
@@ -40,7 +41,7 @@ impl VariableNode {
         VariableNode {
             id: None,
             name: name.to_string(),
-            frames: frames.to_vec(),
+            frames: frames.into(),
             is_loop,
             index,
         }
@@ -53,27 +54,27 @@ impl AnimationNodeTrait for VariableNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
-        assert!(self.frames.len() != 0);
+        assert!(self.frames.num_frames() != 0);
         let mut index = state.index(&self.index);
         let rem_time = state.attribute::<f32>(&Attribute::TimeThisFrame);
         let frames = *state.attribute::<usize>(&Attribute::Frames);
         let mut frame_time = state.attribute::<f32>(&Attribute::LastFPS) * frames as f32 + rem_time;
-        let mut current: &(Handle<Image>, f32) = &self.frames[index % self.frames.len()];
-        while frame_time > current.1 {
-            frame_time -= current.1;
+        let mut frame_alloted = *self.frames.get_extra(index % self.frames.num_frames());
+        while frame_time > frame_alloted {
+            frame_time -= frame_alloted;
             index += 1;
-            if index >= self.frames.len() {
+            if index >= self.frames.num_frames() {
                 if self.is_loop {
-                    index %= self.frames.len();
+                    index %= self.frames.num_frames();
                 } else {
-                    index = self.frames.len() - 1;
+                    index = self.frames.num_frames() - 1;
                 }
             }
-            current = &self.frames[index];
+            frame_alloted = *self.frames.get_extra(index);
         }
         state.set_attribute(Attribute::TimeThisFrame, frame_time);
         state.set_attribute(self.index.clone(), index);
-        Ok(NodeResult::Done(current.0.clone()))
+        Ok(NodeResult::Done((index, self.frames.atlas.clone())))
     }
 
     fn id(&self) -> NodeId {
@@ -90,21 +91,22 @@ impl AnimationNodeTrait for VariableNode {
 
     #[cfg(feature = "dot")]
     fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
-        this.dot(out);
-        out.push_str(&format!(" [label=\"{}\"];\n", self.name));
-        for (i, (index, len)) in self.frames.iter().enumerate() {
-            this.dot(out);
-            out.push_str(" -> ");
-            let h = handle_to_node(index.id());
-            h.dot(out);
-            out.push_str(&format!(" [label=\"({}, {})\"];\n", i, len));
-            if let Some(path) = asset_server.get_handle_path(index) {
-                h.dot(out);
-                out.push_str(&format!(" [label={:?}];\n", path.path()));
-                h.dot(out);
-                out.push_str(" [color=green];\n");
-            }
-        }
+        todo!()
+        // this.dot(out);
+        // out.push_str(&format!(" [label=\"{}\"];\n", self.name));
+        // for (i, (index, len)) in self.frames.iter().enumerate() {
+        //     this.dot(out);
+        //     out.push_str(" -> ");
+        //     let h = handle_to_node(index.id());
+        //     h.dot(out);
+        //     out.push_str(&format!(" [label=\"({}, {})\"];\n", i, len));
+        //     if let Some(path) = asset_server.get_handle_path(index) {
+        //         h.dot(out);
+        //         out.push_str(&format!(" [label={:?}];\n", path.path()));
+        //         h.dot(out);
+        //         out.push_str(" [color=green];\n");
+        //     }
+        // }
     }
 }
 
@@ -164,14 +166,14 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
         }
         let Some(frames) = frames else {return Err(Error::missing_field("Frames"));};
         let Some(name) = name else {return Err(Error::missing_field("Name"));};
-        let mut handles = Vec::with_capacity(frames.len());
+        let mut images = Vec::with_capacity(frames.len());
         for frame in frames {
-            handles.push((self.0.get_handle::<_, Image>(&frame.0), frame.1));
+            images.push((self.0.get_handle::<_, Image>(&frame.0), frame.1));
             self.1.push(frame.0.into());
         }
         Ok(VariableNode {
             id: None,
-            frames: handles,
+            frames: images.into(),
             name,
             is_loop,
             index,

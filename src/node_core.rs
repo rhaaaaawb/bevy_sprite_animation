@@ -39,7 +39,7 @@ pub trait AnimationNodeTrait: Reflect {
 #[derive(Debug)]
 pub enum NodeResult {
     Next(NodeId<'static>),
-    Done(Handle<Image>),
+    Done((usize, Handle<TextureAtlas>)),
 }
 
 impl std::fmt::Display for NodeResult {
@@ -48,5 +48,47 @@ impl std::fmt::Display for NodeResult {
             NodeResult::Next(id) => f.write_fmt(format_args!("Next({:#?})", id)),
             NodeResult::Done(_) => f.write_str("Done"),
         }
+    }
+}
+
+#[derive(Debug, Reflect)]
+pub struct NodeFrames<T> {
+    pub min_i: usize,
+    pub max_i: usize,
+    pub atlas: Handle<TextureAtlas>,
+    extra_data: Vec<T>,
+}
+
+impl<T> NodeFrames<T> {
+    pub fn num_frames(&self) -> usize {
+        self.max_i - self.min_i
+    }
+
+    pub fn get_extra(&self, index: usize) -> &T {
+        self.extra_data.get(index - self.min_i).unwrap()
+    }
+}
+
+impl From<&[Handle<Image>]> for NodeFrames<()> {
+    fn from(value: &[Handle<Image>]) -> Self {
+        todo!()
+    }
+}
+
+impl From<Vec<Handle<Image>>> for NodeFrames<()> {
+    fn from(value: Vec<Handle<Image>>) -> Self {
+        todo!()
+    }
+}
+
+impl<T> From<&[(Handle<Image>, T)]> for NodeFrames<T> {
+    fn from(value: &[(Handle<Image>, T)]) -> Self {
+        todo!()
+    }
+}
+
+impl<T> From<Vec<(Handle<Image>, T)>> for NodeFrames<T> {
+    fn from(value: Vec<(Handle<Image>, T)>) -> Self {
+        todo!()
     }
 }

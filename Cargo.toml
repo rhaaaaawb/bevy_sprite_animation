@@ -24,9 +24,9 @@ opener = { version = ">=0.6", optional = true }
 
 [features]
 default = ["serialize", "dot", "image_vec"]
-serialize = ["dep:ron", "dep:serde"]
-dot = ["dep:opener"]
-# editor = ["dep:bevy_editor_pls", "dep:bevy-inspector-egui"]
+serialize = ["ron", "serde"]
+dot = ["opener"]
+# editor = ["bevy_editor_pls", "bevy-inspector-egui"]
 image_vec = []
 sprite_sheet = []
 

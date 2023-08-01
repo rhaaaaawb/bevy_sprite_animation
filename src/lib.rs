@@ -207,12 +207,17 @@ impl StartNode {
 
 fn animation_system<const MAX: usize>(
     nodes: Res<Assets<AnimationNode>>,
-    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode)>,
+    mut query: Query<(
+        &mut state::AnimationState,
+        &mut TextureAtlasSprite,
+        &mut Handle<TextureAtlas>,
+        &StartNode,
+    )>,
     debug_nodes: Query<&StartNode>,
 ) {
     query
         .par_iter_mut()
-        .for_each_mut(|(mut state, mut image, start)| {
+        .for_each_mut(|(mut state, mut sprite, mut texture_atlas, start)| {
             let mut next = NodeResult::Next(start.0.clone());
             trace!("Starting With: {:?}", start.0);
             'main: for _ in 0..MAX {
@@ -238,8 +243,9 @@ fn animation_system<const MAX: usize>(
                             break;
                         }
                     }
-                    NodeResult::Done(h) => {
-                        *image = h;
+                    NodeResult::Done((i, a)) => {
+                        sprite.index = i;
+                        *texture_atlas = a;
                         break;
                     }
                 }

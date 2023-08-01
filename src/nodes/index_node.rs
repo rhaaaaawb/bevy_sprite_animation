@@ -1,4 +1,5 @@
 use crate::error::LoadError;
+use crate::node_core::NodeFrames;
 use crate::prelude::*;
 use crate::serde::LoadNode;
 use crate::serde::ReflectLoadNode;
@@ -6,6 +7,7 @@ use bevy::asset::AssetPath;
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use bevy::reflect::Reflect;
+use bevy::sprite::TextureAtlas;
 use serde::Deserializer;
 
 #[derive(Debug, Reflect)]
@@ -13,7 +15,7 @@ use serde::Deserializer;
 pub struct IndexNode {
     id: Option<NodeId<'static>>,
     name: String,
-    frames: Vec<Handle<Image>>,
+    frames: NodeFrames<()>,
     is_loop: bool,
     index: Attribute,
 }
@@ -24,7 +26,7 @@ impl IndexNode {
         IndexNode {
             id: None,
             name: name.to_string(),
-            frames: frames.to_vec(),
+            frames: frames.into(),
             is_loop,
             index: Attribute::IndexId(0),
         }
@@ -40,7 +42,7 @@ impl IndexNode {
         IndexNode {
             id: None,
             name: name.to_string(),
-            frames: frames.to_vec(),
+            frames: frames.into(),
             is_loop,
             index,
         }
@@ -53,19 +55,19 @@ impl AnimationNodeTrait for IndexNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
-        assert!(self.frames.len() != 0);
+        assert!(self.frames.num_frames() != 0);
         let mut index = state.index(&self.index);
         let frames = state.attribute::<usize>(&Attribute::Frames);
         index += frames;
-        if index >= self.frames.len() {
+        if index >= self.frames.num_frames() {
             if self.is_loop {
-                index %= self.frames.len();
+                index %= self.frames.num_frames();
             } else {
-                index = self.frames.len() - 1;
+                index = self.frames.num_frames() - 1;
             }
         }
         state.set_attribute(self.index.clone(), index);
-        Ok(NodeResult::Done(self.frames[index].clone()))
+        Ok(NodeResult::Done((index, self.frames.atlas.clone())))
     }
 
     fn id(&self) -> NodeId {
@@ -155,14 +157,14 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
         }
         let Some(frames) = frames else {return Err(Error::missing_field("Frames"));};
         let Some(name) = name else {return Err(Error::missing_field("Name"));};
-        let mut handles = Vec::with_capacity(frames.len());
+        let mut images = Vec::with_capacity(frames.len());
         for frame in frames {
-            handles.push(self.0.get_handle::<_, Image>(&frame));
+            images.push(self.0.get_handle::<_, Image>(&frame));
             self.1.push(frame.into());
         }
         Ok(IndexNode {
             id: None,
-            frames: handles,
+            frames: images.into(),
             name,
             is_loop,
             index,
