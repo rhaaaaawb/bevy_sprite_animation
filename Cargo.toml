@@ -23,10 +23,12 @@ strum_macros = "0.25"
 opener = { version = ">=0.6", optional = true }
 
 [features]
-default = ["serialize", "dot"]
-serialize = ["ron", "serde"]
-dot = ["opener"]
+default = ["serialize", "dot", "image_vec"]
+serialize = ["dep:ron", "dep:serde"]
+dot = ["dep:opener"]
 # editor = ["dep:bevy_editor_pls", "dep:bevy-inspector-egui"]
+image_vec = []
+sprite_sheet = []
 
 [[bin]]
 name = "from_code"

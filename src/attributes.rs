@@ -370,201 +370,206 @@ impl<'de> serde::de::DeserializeSeed<'de> for AttributeVisitor {
     }
 }
 
-#[test]
-fn test_serde() {
-    let ser_cid = ron::to_string(&Attribute::CustomId(2)).expect("ron to work");
-    let ser_cname = ron::to_string(&Attribute::new_attribute("Two")).expect("ron to work");
-    let ser_iid = ron::to_string(&Attribute::IndexId(2)).expect("ron to work");
-    let ser_iname = ron::to_string(&Attribute::new_index("Two")).expect("ron to work");
-    let ser_v = ron::to_string(&Attribute::Default).expect("ron to work");
+#[cfg(test)]
+mod test {
+    use super::*;
 
-    assert_eq!(ser_cid, "Custom(2)");
-    assert_eq!(ser_cname, "Custom(\"Two\")");
-    assert_eq!(ser_iid, "Index(2)");
-    assert_eq!(ser_iname, "Index(\"Two\")");
-    assert_eq!(ser_v, "Default");
+    #[test]
+    fn test_serde() {
+        let ser_cid = ron::to_string(&Attribute::CustomId(2)).expect("ron to work");
+        let ser_cname = ron::to_string(&Attribute::new_attribute("Two")).expect("ron to work");
+        let ser_iid = ron::to_string(&Attribute::IndexId(2)).expect("ron to work");
+        let ser_iname = ron::to_string(&Attribute::new_index("Two")).expect("ron to work");
+        let ser_v = ron::to_string(&Attribute::Default).expect("ron to work");
 
-    assert_eq!(Ok(Attribute::CustomId(2)), ron::from_str(&ser_cid));
-    assert_eq!(
-        Ok(Attribute::new_attribute("Two")),
-        ron::from_str(&ser_cname)
-    );
-    assert_eq!(Ok(Attribute::IndexId(2)), ron::from_str(&ser_iid));
-    assert_eq!(Ok(Attribute::new_index("Two")), ron::from_str(&ser_iname));
-    assert_eq!(Ok(Attribute::Default), ron::from_str(&ser_v));
-}
+        assert_eq!(ser_cid, "Custom(2)");
+        assert_eq!(ser_cname, "Custom(\"Two\")");
+        assert_eq!(ser_iid, "Index(2)");
+        assert_eq!(ser_iname, "Index(\"Two\")");
+        assert_eq!(ser_v, "Default");
 
-#[test]
-fn assert_eq() {
-    // test custom
-    assert_eq!(Attribute::CustomId(0), Attribute::CustomId(0));
-    assert_ne!(Attribute::CustomId(0), Attribute::CustomId(1));
-    assert_ne!(Attribute::CustomId(0), Attribute::new_attribute("Test"));
-    let name = Attribute::new_attribute("Test");
-    let name_hash = Attribute::CustomId(10729580169200549928);
-    assert_eq!(
-        Attribute::new_attribute("Test"),
-        Attribute::new_attribute(String::from("Test"))
-    );
-    assert_eq!(
-        Attribute::new_attribute("Test"),
-        Attribute::CustomId(10729580169200549928)
-    );
-    assert_eq!(
-        Attribute::CustomId(10729580169200549928),
-        Attribute::new_attribute("Test")
-    );
-    assert_eq!(
-        Attribute::CustomId(10729580169200549928),
-        Attribute::CustomId(10729580169200549928)
-    );
-    assert_eq!(name, name_hash);
-    assert_eq!(name_hash, name);
+        assert_eq!(Ok(Attribute::CustomId(2)), ron::from_str(&ser_cid));
+        assert_eq!(
+            Ok(Attribute::new_attribute("Two")),
+            ron::from_str(&ser_cname)
+        );
+        assert_eq!(Ok(Attribute::IndexId(2)), ron::from_str(&ser_iid));
+        assert_eq!(Ok(Attribute::new_index("Two")), ron::from_str(&ser_iname));
+        assert_eq!(Ok(Attribute::Default), ron::from_str(&ser_v));
+    }
 
-    // test index
-    assert_eq!(Attribute::IndexId(0), Attribute::IndexId(0));
-    assert_ne!(Attribute::IndexId(0), Attribute::IndexId(1));
-    assert_ne!(Attribute::IndexId(0), Attribute::new_index("Test"));
-    let name = Attribute::new_index("Test");
-    let name_hash = Attribute::IndexId(10729580169200549928);
-    assert_eq!(
-        Attribute::new_index("Test"),
-        Attribute::new_index(String::from("Test"))
-    );
-    assert_eq!(
-        Attribute::new_index("Test"),
-        Attribute::IndexId(10729580169200549928)
-    );
-    assert_eq!(
-        Attribute::IndexId(10729580169200549928),
-        Attribute::new_index("Test")
-    );
-    assert_eq!(
-        Attribute::IndexId(10729580169200549928),
-        Attribute::IndexId(10729580169200549928)
-    );
-    assert_eq!(name, name_hash);
-    assert_eq!(name_hash, name);
+    #[test]
+    fn assert_eq() {
+        // test custom
+        assert_eq!(Attribute::CustomId(0), Attribute::CustomId(0));
+        assert_ne!(Attribute::CustomId(0), Attribute::CustomId(1));
+        assert_ne!(Attribute::CustomId(0), Attribute::new_attribute("Test"));
+        let name = Attribute::new_attribute("Test");
+        let name_hash = Attribute::CustomId(10729580169200549928);
+        assert_eq!(
+            Attribute::new_attribute("Test"),
+            Attribute::new_attribute(String::from("Test"))
+        );
+        assert_eq!(
+            Attribute::new_attribute("Test"),
+            Attribute::CustomId(10729580169200549928)
+        );
+        assert_eq!(
+            Attribute::CustomId(10729580169200549928),
+            Attribute::new_attribute("Test")
+        );
+        assert_eq!(
+            Attribute::CustomId(10729580169200549928),
+            Attribute::CustomId(10729580169200549928)
+        );
+        assert_eq!(name, name_hash);
+        assert_eq!(name_hash, name);
 
-    // test index not custom
-    assert_ne!(Attribute::CustomId(0), Attribute::IndexId(0));
-    assert_ne!(Attribute::IndexId(0), Attribute::CustomId(0));
-    assert_ne!(
-        Attribute::new_attribute("Test"),
-        Attribute::new_index("Test")
-    );
-    assert_ne!(
-        Attribute::new_index("Test"),
-        Attribute::new_attribute("Test")
-    );
-    assert_ne!(Attribute::CustomId(0), Attribute::Default);
-    assert_ne!(Attribute::IndexId(0), Attribute::Default);
+        // test index
+        assert_eq!(Attribute::IndexId(0), Attribute::IndexId(0));
+        assert_ne!(Attribute::IndexId(0), Attribute::IndexId(1));
+        assert_ne!(Attribute::IndexId(0), Attribute::new_index("Test"));
+        let name = Attribute::new_index("Test");
+        let name_hash = Attribute::IndexId(10729580169200549928);
+        assert_eq!(
+            Attribute::new_index("Test"),
+            Attribute::new_index(String::from("Test"))
+        );
+        assert_eq!(
+            Attribute::new_index("Test"),
+            Attribute::IndexId(10729580169200549928)
+        );
+        assert_eq!(
+            Attribute::IndexId(10729580169200549928),
+            Attribute::new_index("Test")
+        );
+        assert_eq!(
+            Attribute::IndexId(10729580169200549928),
+            Attribute::IndexId(10729580169200549928)
+        );
+        assert_eq!(name, name_hash);
+        assert_eq!(name_hash, name);
 
-    //test not working in example
-    let test = Attribute::new_attribute("ZombieState");
-    assert_eq!(
-        Ok(Attribute::new_attribute("ZombieState")),
-        ron::from_str("Custom(\"ZombieState\")")
-    );
-    assert_eq!(test.clone(), test);
-    assert_eq!(test, test.clone());
-    assert_eq!(
-        Attribute::new_attribute("ZombieState"),
-        Attribute::CustomId(4771896640381021065)
-    );
-}
+        // test index not custom
+        assert_ne!(Attribute::CustomId(0), Attribute::IndexId(0));
+        assert_ne!(Attribute::IndexId(0), Attribute::CustomId(0));
+        assert_ne!(
+            Attribute::new_attribute("Test"),
+            Attribute::new_index("Test")
+        );
+        assert_ne!(
+            Attribute::new_index("Test"),
+            Attribute::new_attribute("Test")
+        );
+        assert_ne!(Attribute::CustomId(0), Attribute::Default);
+        assert_ne!(Attribute::IndexId(0), Attribute::Default);
 
-#[test]
-fn test_hash() {
-    use crate::utils::get_hasher;
-    use std::hash::Hasher;
-    // custom vs custom id
-    let mut hash = get_hasher();
-    Attribute::CustomId(0).hash(&mut hash);
-    let hash_0 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::CustomId(0).hash(&mut hash);
-    let hash_0_1 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::CustomId(1).hash(&mut hash);
-    let hash_1 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::new_attribute("Test").hash(&mut hash);
-    let hash_name = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::CustomId(10729580169200549928).hash(&mut hash);
-    let hash_name_1 = hash.finish();
-    assert_ne!(hash_0, hash_1);
-    assert_eq!(hash_0, hash_0_1);
-    assert_eq!(hash_name, hash_name_1);
+        //test not working in example
+        let test = Attribute::new_attribute("ZombieState");
+        assert_eq!(
+            Ok(Attribute::new_attribute("ZombieState")),
+            ron::from_str("Custom(\"ZombieState\")")
+        );
+        assert_eq!(test.clone(), test);
+        assert_eq!(test, test.clone());
+        assert_eq!(
+            Attribute::new_attribute("ZombieState"),
+            Attribute::CustomId(4771896640381021065)
+        );
+    }
 
-    // index vs index id
-    let mut hash = get_hasher();
-    Attribute::IndexId(0).hash(&mut hash);
-    let hash_0 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::IndexId(0).hash(&mut hash);
-    let hash_0_1 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::IndexId(1).hash(&mut hash);
-    let hash_1 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::new_index("Test").hash(&mut hash);
-    let hash_name = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::IndexId(10729580169200549928).hash(&mut hash);
-    let hash_name_1 = hash.finish();
-    assert_ne!(hash_0, hash_1);
-    assert_eq!(hash_0, hash_0_1);
-    assert_eq!(hash_name, hash_name_1);
+    #[test]
+    fn test_hash() {
+        use crate::utils::get_hasher;
+        use std::hash::Hasher;
+        // custom vs custom id
+        let mut hash = get_hasher();
+        Attribute::CustomId(0).hash(&mut hash);
+        let hash_0 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::CustomId(0).hash(&mut hash);
+        let hash_0_1 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::CustomId(1).hash(&mut hash);
+        let hash_1 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::new_attribute("Test").hash(&mut hash);
+        let hash_name = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::CustomId(10729580169200549928).hash(&mut hash);
+        let hash_name_1 = hash.finish();
+        assert_ne!(hash_0, hash_1);
+        assert_eq!(hash_0, hash_0_1);
+        assert_eq!(hash_name, hash_name_1);
 
-    // index vs custom
-    let mut hash = get_hasher();
-    Attribute::CustomId(0).hash(&mut hash);
-    let hash_0 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::IndexId(0).hash(&mut hash);
-    let hash_0_1 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::new_attribute("Test").hash(&mut hash);
-    let hash_name = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::CustomId(10729580169200549928).hash(&mut hash);
-    let hash_name_1 = hash.finish();
+        // index vs index id
+        let mut hash = get_hasher();
+        Attribute::IndexId(0).hash(&mut hash);
+        let hash_0 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::IndexId(0).hash(&mut hash);
+        let hash_0_1 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::IndexId(1).hash(&mut hash);
+        let hash_1 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::new_index("Test").hash(&mut hash);
+        let hash_name = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::IndexId(10729580169200549928).hash(&mut hash);
+        let hash_name_1 = hash.finish();
+        assert_ne!(hash_0, hash_1);
+        assert_eq!(hash_0, hash_0_1);
+        assert_eq!(hash_name, hash_name_1);
 
-    let mut hash = get_hasher();
-    Attribute::new_index("Test").hash(&mut hash);
-    let hash_index = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::IndexId(10729580169200549928).hash(&mut hash);
-    let hash_index_1 = hash.finish();
-    assert_ne!(hash_0, hash_0_1);
-    assert_ne!(hash_name, hash_index);
-    assert_ne!(hash_index_1, hash_name_1);
+        // index vs custom
+        let mut hash = get_hasher();
+        Attribute::CustomId(0).hash(&mut hash);
+        let hash_0 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::IndexId(0).hash(&mut hash);
+        let hash_0_1 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::new_attribute("Test").hash(&mut hash);
+        let hash_name = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::CustomId(10729580169200549928).hash(&mut hash);
+        let hash_name_1 = hash.finish();
 
-    // Core vs custom
-    let mut hash = get_hasher();
-    Attribute::CustomId(0).hash(&mut hash);
-    let hash_0 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::Default.hash(&mut hash);
-    let hash_0_1 = hash.finish();
-    assert_ne!(hash_0, hash_0_1);
+        let mut hash = get_hasher();
+        Attribute::new_index("Test").hash(&mut hash);
+        let hash_index = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::IndexId(10729580169200549928).hash(&mut hash);
+        let hash_index_1 = hash.finish();
+        assert_ne!(hash_0, hash_0_1);
+        assert_ne!(hash_name, hash_index);
+        assert_ne!(hash_index_1, hash_name_1);
 
-    // core vs core
-    let mut hash = get_hasher();
-    Attribute::Default.hash(&mut hash);
-    let hash_0 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::Default.hash(&mut hash);
-    let hash_0_1 = hash.finish();
-    assert_eq!(hash_0, hash_0_1);
+        // Core vs custom
+        let mut hash = get_hasher();
+        Attribute::CustomId(0).hash(&mut hash);
+        let hash_0 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::Default.hash(&mut hash);
+        let hash_0_1 = hash.finish();
+        assert_ne!(hash_0, hash_0_1);
 
-    let mut hash = get_hasher();
-    Attribute::FlipX.hash(&mut hash);
-    let hash_0 = hash.finish();
-    let mut hash = get_hasher();
-    Attribute::Default.hash(&mut hash);
-    let hash_0_1 = hash.finish();
-    assert_ne!(hash_0, hash_0_1);
+        // core vs core
+        let mut hash = get_hasher();
+        Attribute::Default.hash(&mut hash);
+        let hash_0 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::Default.hash(&mut hash);
+        let hash_0_1 = hash.finish();
+        assert_eq!(hash_0, hash_0_1);
+
+        let mut hash = get_hasher();
+        Attribute::FlipX.hash(&mut hash);
+        let hash_0 = hash.finish();
+        let mut hash = get_hasher();
+        Attribute::Default.hash(&mut hash);
+        let hash_0_1 = hash.finish();
+        assert_ne!(hash_0, hash_0_1);
+    }
 }

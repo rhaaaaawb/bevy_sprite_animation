@@ -139,60 +139,6 @@ impl<'de> serde::de::DeserializeSeed<'de> for NodeVisitor {
     }
 }
 
-#[test]
-fn test_serde() {
-    let ser_u64 = ron::to_string(&NodeId::U64(2)).expect("ron to work");
-    let ser_name = ron::to_string(&NodeId::from_name("Two")).expect("ron to work");
-    let ser_hash = ron::to_string(&NodeId::Hash(2)).expect("ron to work");
-
-    assert_eq!(ser_u64, "Id(2)");
-    assert_eq!(ser_name, "Name(\"Two\")");
-    assert_eq!(ser_hash, "Name(2)");
-
-    assert_eq!(Ok(NodeId::U64(2)), ron::from_str(&ser_u64));
-    assert_eq!(Ok(NodeId::from_name("Two")), ron::from_str(&ser_name));
-    assert_eq!(Ok(NodeId::Hash(2)), ron::from_str(&ser_hash));
-}
-
-#[test]
-fn assert_eq() {
-    assert_eq!(NodeId::U64(0), NodeId::U64(0));
-    assert_ne!(NodeId::U64(0), NodeId::U64(1));
-    assert_ne!(NodeId::U64(0), NodeId::from_name("Test"));
-    let u64 = NodeId::U64(0);
-    assert_eq!(u64.to_static(), u64);
-    assert_eq!(u64.to_static(), u64.to_static());
-    let name = NodeId::from_name("Test");
-    let name_hash = NodeId::Hash(10729580169200549928);
-    assert_eq!(name.to_static(), name);
-    assert_eq!(
-        NodeId::from_name("Test"),
-        NodeId::from_name(String::from("Test"))
-    );
-    assert_eq!(
-        NodeId::from_name("Test"),
-        NodeId::Hash(10729580169200549928)
-    );
-    assert_eq!(
-        NodeId::Hash(10729580169200549928),
-        NodeId::from_name("Test")
-    );
-    assert_eq!(
-        NodeId::Hash(10729580169200549928),
-        NodeId::Hash(10729580169200549928)
-    );
-    assert_eq!(name.to_static(), NodeId::from_name("Test"));
-    assert_eq!(name.to_static(), NodeId::Hash(10729580169200549928));
-    assert_eq!(NodeId::from_name("Test"), name.to_static());
-    assert_eq!(NodeId::Hash(10729580169200549928), name.to_static());
-    assert_ne!(u64.to_static(), name.to_static());
-    assert_eq!(name, name_hash);
-    assert_eq!(name_hash, name);
-    assert_eq!(name_hash.to_static(), name_hash);
-    assert_eq!(name.to_static(), name);
-    assert_eq!(name_hash.to_static(), name.to_static());
-}
-
 impl Eq for NodeId<'_> {}
 
 impl PartialEq for NodeId<'_> {
@@ -321,5 +267,64 @@ pub(crate) fn handle_to_node(handle: HandleId) -> NodeId<'static> {
             }
         }
         HandleId::AssetPathId(_) => NodeId::Handle(Handle::weak(handle)),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_serde() {
+        let ser_u64 = ron::to_string(&NodeId::U64(2)).expect("ron to work");
+        let ser_name = ron::to_string(&NodeId::from_name("Two")).expect("ron to work");
+        let ser_hash = ron::to_string(&NodeId::Hash(2)).expect("ron to work");
+
+        assert_eq!(ser_u64, "Id(2)");
+        assert_eq!(ser_name, "Name(\"Two\")");
+        assert_eq!(ser_hash, "Name(2)");
+
+        assert_eq!(Ok(NodeId::U64(2)), ron::from_str(&ser_u64));
+        assert_eq!(Ok(NodeId::from_name("Two")), ron::from_str(&ser_name));
+        assert_eq!(Ok(NodeId::Hash(2)), ron::from_str(&ser_hash));
+    }
+
+    #[test]
+    fn assert_eq() {
+        assert_eq!(NodeId::U64(0), NodeId::U64(0));
+        assert_ne!(NodeId::U64(0), NodeId::U64(1));
+        assert_ne!(NodeId::U64(0), NodeId::from_name("Test"));
+        let u64 = NodeId::U64(0);
+        assert_eq!(u64.to_static(), u64);
+        assert_eq!(u64.to_static(), u64.to_static());
+        let name = NodeId::from_name("Test");
+        let name_hash = NodeId::Hash(10729580169200549928);
+        assert_eq!(name.to_static(), name);
+        assert_eq!(
+            NodeId::from_name("Test"),
+            NodeId::from_name(String::from("Test"))
+        );
+        assert_eq!(
+            NodeId::from_name("Test"),
+            NodeId::Hash(10729580169200549928)
+        );
+        assert_eq!(
+            NodeId::Hash(10729580169200549928),
+            NodeId::from_name("Test")
+        );
+        assert_eq!(
+            NodeId::Hash(10729580169200549928),
+            NodeId::Hash(10729580169200549928)
+        );
+        assert_eq!(name.to_static(), NodeId::from_name("Test"));
+        assert_eq!(name.to_static(), NodeId::Hash(10729580169200549928));
+        assert_eq!(NodeId::from_name("Test"), name.to_static());
+        assert_eq!(NodeId::Hash(10729580169200549928), name.to_static());
+        assert_ne!(u64.to_static(), name.to_static());
+        assert_eq!(name, name_hash);
+        assert_eq!(name_hash, name);
+        assert_eq!(name_hash.to_static(), name_hash);
+        assert_eq!(name.to_static(), name);
+        assert_eq!(name_hash.to_static(), name.to_static());
     }
 }

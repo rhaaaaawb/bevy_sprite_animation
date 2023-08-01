@@ -35,15 +35,6 @@ pub mod node_id;
 #[cfg(feature = "dot")]
 pub mod dot;
 
-#[cfg(test)]
-mod test {
-    pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
-        use bevy::core::TaskPoolOptions;
-        TaskPoolOptions::default().create_default_pools();
-        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", &None))
-    }
-}
-
 /// The plugin that adds all you need for the Animation sytem
 /// The const is the max number of nodes that are to be run per entity per frame
 /// This is to stop infinity looping, you should be abel to see this high if you have no nodes that loop
@@ -74,8 +65,8 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
         app.register_type::<StartNode>();
         #[cfg(feature = "dot")]
         app.add_systems(Update, dot::write_dot);
-        #[cfg(feature = "editor")]
-        app.add_plugins(crate::editor::SpriteAnimationEditorPlugin);
+        // #[cfg(feature = "editor")]
+        // app.add_plugins(crate::editor::SpriteAnimationEditorPlugin);
     }
 }
 
@@ -254,4 +245,13 @@ fn animation_system<const MAX: usize>(
                 }
             }
         })
+}
+
+#[cfg(test)]
+mod test {
+    pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
+        use bevy::core::TaskPoolOptions;
+        TaskPoolOptions::default().create_default_pools();
+        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", &None))
+    }
 }
