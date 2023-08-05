@@ -1,7 +1,9 @@
-use crate::error::BevySpriteAnimationError as Error;
-use crate::prelude::*;
-use bevy::prelude::*;
 use std::fmt::Debug;
+
+use bevy::prelude::*;
+use node_core::{FrameHandle, FrameSprite, FrameSpriteTrait};
+
+use crate::{error::BevySpriteAnimationError as Error, prelude::*};
 
 pub(crate) mod utils {
     use std::hash::Hasher;
@@ -37,7 +39,7 @@ pub mod dot;
 
 /// The plugin that adds all you need for the Animation sytem
 /// The const is the max number of nodes that are to be run per entity per frame
-/// This is to stop infinity looping, you should be abel to see this high if you have no nodes that loop
+/// This is to stop infinite looping, you should be abel to see this high if you have no nodes that loop
 /// This will only report as a warning when the max depth is reached so please dont set it too high if there is a potental to loop
 /// start small get bigger, keep it as small as you can whithout rist of breaking early
 pub struct SpriteAnimationPlugin<const MAXDEPTH: usize>;
@@ -209,15 +211,15 @@ fn animation_system<const MAX: usize>(
     nodes: Res<Assets<AnimationNode>>,
     mut query: Query<(
         &mut state::AnimationState,
-        &mut TextureAtlasSprite,
-        &mut Handle<TextureAtlas>,
+        &mut FrameSprite,
+        &mut FrameHandle,
         &StartNode,
     )>,
     debug_nodes: Query<&StartNode>,
 ) {
     query
         .par_iter_mut()
-        .for_each_mut(|(mut state, mut sprite, mut texture_atlas, start)| {
+        .for_each_mut(|(mut state, mut sprite, mut frame_handle, start)| {
             let mut next = NodeResult::Next(start.0.clone());
             trace!("Starting With: {:?}", start.0);
             'main: for _ in 0..MAX {
@@ -244,8 +246,8 @@ fn animation_system<const MAX: usize>(
                         }
                     }
                     NodeResult::Done((i, a)) => {
-                        sprite.index = i;
-                        *texture_atlas = a;
+                        sprite.set_frame_index(i);
+                        *frame_handle = a;
                         break;
                     }
                 }

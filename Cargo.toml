@@ -30,10 +30,18 @@ dot = ["opener"]
 image_vec = []
 sprite_sheet = []
 
-[[bin]]
-name = "from_code"
-path = "examples/basic_code_animation.rs"
+[[example]]
+name = "basic_code_animation_image_vec"
+required-features = ["image_vec"]
 
-[[bin]]
-name = "from_loaded"
-path = "examples/basic_load_animation.rs"
+[[example]]
+name = "basic_load_animation_image_vec"
+required-features = ["image_vec"]
+
+[[example]]
+name = "basic_code_animation_sprite_sheet"
+required-features = ["sprite_sheet"]
+
+[[example]]
+name = "zombie"
+required-features = ["image_vec"]

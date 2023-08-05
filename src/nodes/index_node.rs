@@ -1,5 +1,8 @@
 use crate::error::LoadError;
+use crate::node_core::IntoNodeFrames;
+use crate::node_core::IntoNodeFramesTrait;
 use crate::node_core::NodeFrames;
+use crate::node_core::NodeFramesTrait;
 use crate::prelude::*;
 use crate::serde::LoadNode;
 use crate::serde::ReflectLoadNode;
@@ -7,7 +10,6 @@ use bevy::asset::AssetPath;
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use bevy::reflect::Reflect;
-use bevy::sprite::TextureAtlas;
 use serde::Deserializer;
 
 #[derive(Debug, Reflect)]
@@ -20,6 +22,45 @@ pub struct IndexNode {
     index: Attribute,
 }
 
+#[cfg(feature = "sprite_sheet")]
+impl IndexNode {
+    #[inline(always)]
+    pub fn new(
+        name: &str,
+        frames: Handle<TextureAtlas>,
+        min_i: usize,
+        max_i: usize,
+        is_loop: bool,
+    ) -> IndexNode {
+        IndexNode {
+            id: None,
+            name: name.to_string(),
+            frames: NodeFrames::new(frames, min_i, max_i, Vec::new()),
+            is_loop,
+            index: Attribute::IndexId(0),
+        }
+    }
+
+    #[inline(always)]
+    pub fn new_with_index(
+        name: &str,
+        frames: Handle<TextureAtlas>,
+        min_i: usize,
+        max_i: usize,
+        is_loop: bool,
+        index: Attribute,
+    ) -> IndexNode {
+        IndexNode {
+            id: None,
+            name: name.to_string(),
+            frames: NodeFrames::new(frames, min_i, max_i, Vec::new()),
+            is_loop,
+            index,
+        }
+    }
+}
+
+#[cfg(all(feature = "image_vec", not(feature = "sprite_sheet")))]
 impl IndexNode {
     #[inline(always)]
     pub fn new(name: &str, frames: &[Handle<Image>], is_loop: bool) -> IndexNode {
@@ -67,7 +108,10 @@ impl AnimationNodeTrait for IndexNode {
             }
         }
         state.set_attribute(self.index.clone(), index);
-        Ok(NodeResult::Done((index, self.frames.atlas.clone())))
+        Ok(NodeResult::Done((
+            index,
+            self.frames.frame_handle(index).clone(),
+        )))
     }
 
     fn id(&self) -> NodeId {
@@ -86,19 +130,7 @@ impl AnimationNodeTrait for IndexNode {
     fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
         this.dot(out);
         out.push_str(&format!(" [label=\"{}\"];\n", self.name));
-        for (i, index) in self.frames.iter().enumerate() {
-            this.dot(out);
-            out.push_str(" -> ");
-            let h = handle_to_node(index.id());
-            h.dot(out);
-            out.push_str(&format!(" [label=\"{}\"];\n", i));
-            if let Some(path) = asset_server.get_handle_path(index) {
-                h.dot(out);
-                out.push_str(&format!(" [label={:?}];\n", path.path()));
-                h.dot(out);
-                out.push_str(" [color=green];\n");
-            }
-        }
+        self.frames.dot(this, out, asset_server);
     }
 }
 
@@ -150,21 +182,17 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
         while let Some(key) = map.next_key::<Fileds>()? {
             match key {
                 Fileds::Name => name = Some(map.next_value::<String>()?),
-                Fileds::Frames => frames = Some(map.next_value::<Vec<String>>()?),
+                Fileds::Frames => frames = Some(map.next_value::<IntoNodeFrames<()>>()?),
                 Fileds::IsLoop => is_loop = map.next_value::<bool>()?,
                 Fileds::Index => index = map.next_value::<Attribute>()?,
             }
         }
         let Some(frames) = frames else {return Err(Error::missing_field("Frames"));};
         let Some(name) = name else {return Err(Error::missing_field("Name"));};
-        let mut images = Vec::with_capacity(frames.len());
-        for frame in frames {
-            images.push(self.0.get_handle::<_, Image>(&frame));
-            self.1.push(frame.into());
-        }
+
         Ok(IndexNode {
             id: None,
-            frames: images.into(),
+            frames: frames.to_node_frames(self.0, self.1),
             name,
             is_loop,
             index,

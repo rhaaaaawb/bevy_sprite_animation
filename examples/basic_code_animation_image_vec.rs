@@ -22,8 +22,8 @@ fn setup_animations(
     commands.spawn(Camera2dBundle::default());
 
     // Load all the images
-    let images = asset_server
-        .load_folder("Zombie1")
+    let images: Vec<Handle<Image>> = asset_server
+        .load_folder("Zombie1_image_vec")
         .unwrap()
         .into_iter()
         .map(|h| h.typed())
@@ -33,7 +33,7 @@ fn setup_animations(
     let index = nodes.add(AnimationNode::new(
         bevy_sprite_animation::nodes::IndexNode::new(
             // this node will be called test
-            "test", // this is the frames in oreder that it will use
+            "test",  // this is the frames in order that it will use
             &images, // we want it to loop after it gets to the end
             true,
         ),

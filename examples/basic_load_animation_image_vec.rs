@@ -59,7 +59,7 @@ fn setup_animations(mut commands: Commands, asset_server: Res<AssetServer>) {
     // loading form a .nodetree will return a handle to ReferenceNode this holdes all handles to all
     // the nodes in the tree this is done so the nodes can have custom ids, but would then unload the next
     // frame
-    let tree = asset_server.load("Zombie1.nodetree");
+    let tree = asset_server.load("Zombie1_image_vec.nodetree");
 
     // crate a state that tells trees dynamic data, would be pointless
     // if it always the same each frame

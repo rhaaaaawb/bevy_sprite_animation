@@ -1,8 +1,9 @@
-use crate::error::LoadError;
-use crate::prelude::*;
-use bevy::asset::{AssetPath, LoadedAsset};
-use bevy::{asset::AssetLoader, prelude::*};
+use bevy::{
+    asset::{prelude::*, AssetLoader, AssetPath, LoadedAsset},
+    prelude::*,
+};
 
+use crate::{error::LoadError, prelude::*};
 pub struct AnimationNodeSerdePlugin;
 
 impl Plugin for AnimationNodeSerdePlugin {
